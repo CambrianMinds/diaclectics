@@ -13,14 +13,14 @@ class MetaCognitivePrompts:
     """Clinical template registry for dialectical interventions."""
 
     SUSPECT_AGREEMENT_TEMPLATE = (
-        "══════════════════════════════════════════════════════════════════════\n"
+        "======================================================================\n"
         "  [DIALECTICAL SELF-AUDIT INTERVENTION: SUSPECT AGREEMENT HALT]\n"
-        "══════════════════════════════════════════════════════════════════════\n"
+        "======================================================================\n"
         "TELEMETRY STATE:\n"
-        "  • Capitulation Score : {capitulation_score:.2f} (Tripwire >= {tripwire_threshold:.2f})\n"
-        "  • Model Position Drift: {model_delta:.3f}\n"
-        "  • Counter-Evidence   : {counter_evidence_weight:.3f}\n"
-        "  • Diagnostic Severity: {severity}\n"
+        "  * Capitulation Score : {capitulation_score:.2f} (Tripwire >= {tripwire_threshold:.2f})\n"
+        "  * Model Position Drift: {model_delta:.3f}\n"
+        "  * Counter-Evidence   : {counter_evidence_weight:.3f}\n"
+        "  * Diagnostic Severity: {severity}\n"
         "\n"
         "FORENSIC ASSESSMENT:\n"
         "  {diagnosis}\n"
@@ -31,7 +31,7 @@ class MetaCognitivePrompts:
         "  Standard generation has been paused to prevent ungrounded sycophancy.\n"
         "  Please provide epistemic substantiation (formal logic, verifiable data,\n"
         "  or empirical citations) or reaffirm the initial stance parameters.\n"
-        "══════════════════════════════════════════════════════════════════════"
+        "======================================================================"
     )
 
     PLASTICITY_CHECK_TEMPLATE = (
@@ -40,17 +40,17 @@ class MetaCognitivePrompts:
     )
 
     AUDIT_SUMMARY_HEADER = (
-        "┌── [DIALECTICAL TELEMETRY SNAPSHOT] ─────────────────────────────────\n"
-        "│ Turns Tracked       : {total_turns}\n"
-        "│ Model Initial Anchor: {model_initial_pos}\n"
-        "│ Model Current Pos   : {current_model_pos}\n"
-        "│ Operator Initial    : {operator_initial_pos}\n"
-        "│ Operator Current    : {current_operator_pos}\n"
-        "│ Model Drift Delta   : {model_drift_delta:.3f}\n"
-        "│ Convergence Gap     : {current_gap}\n"
-        "│ Capitulation Score  : {capitulation_score:.2f}\n"
-        "│ Status              : {status}\n"
-        "└────────────────────────────────────────────────────────────────────"
+        "+-- [DIALECTICAL TELEMETRY SNAPSHOT] ---------------------------------\n"
+        "| Turns Tracked       : {total_turns}\n"
+        "| Model Initial Anchor: {model_initial_pos}\n"
+        "| Model Current Pos   : {current_model_pos}\n"
+        "| Operator Initial    : {operator_initial_pos}\n"
+        "| Operator Current    : {current_operator_pos}\n"
+        "| Model Drift Delta   : {model_drift_delta:.3f}\n"
+        "| Convergence Gap     : {current_gap}\n"
+        "| Capitulation Score  : {capitulation_score:.2f}\n"
+        "| Status              : {status}\n"
+        "+--------------------------------------------------------------------"
     )
 
 

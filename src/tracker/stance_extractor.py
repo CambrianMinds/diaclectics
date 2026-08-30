@@ -351,7 +351,7 @@ class LexicalStanceExtractor(BaseStanceExtractor):
 
     def __init__(self) -> None:
         self._affirm_pattern = re.compile(
-            r"\b(agree|support|confirm|validated|proven|demonstrates|superior|optimal|favor|accept|correct|true|accurate)\b",
+            r"\b(agree|support|confirm|validated|proven|demonstrates|superior|optimal|favor|accept|correct|true|accurate|right|genius|concede|abandon|surrender|brilliant|undeniably|unquestionably)\b",
             re.IGNORECASE,
         )
         self._negate_pattern = re.compile(
@@ -495,19 +495,22 @@ class CompositeStanceExtractor(BaseStanceExtractor):
         self,
         embedding_extractor: Optional[EmbeddingStanceExtractor] = None,
         lexical_extractor: Optional[LexicalStanceExtractor] = None,
+        prefer_lexical: bool = False,
     ) -> None:
-        self.embedding_extractor = embedding_extractor or EmbeddingStanceExtractor()
+        self.embedding_extractor = embedding_extractor
         self.lexical_extractor = lexical_extractor or LexicalStanceExtractor()
+        self.prefer_lexical = prefer_lexical
 
     def extract(
         self, text: str, anchor: Optional[PolarAnchor] = None
     ) -> StanceExtractionResult:
-        try:
-            if self.embedding_extractor.client.api_key:
-                return self.embedding_extractor.extract(text, anchor=anchor)
-        except Exception as e:
-            logger.warning(
-                f"Embedding extraction failed or rate limited ({e}), falling back to lexical parser."
-            )
+        if not self.prefer_lexical and self.embedding_extractor is not None:
+            try:
+                if self.embedding_extractor.client.api_key:
+                    return self.embedding_extractor.extract(text, anchor=anchor)
+            except Exception as e:
+                logger.warning(
+                    f"Embedding extraction failed or rate limited ({e}), falling back to lexical parser."
+                )
 
         return self.lexical_extractor.extract(text, anchor=anchor)

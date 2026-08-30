@@ -97,8 +97,8 @@ class EpistemicReasoningJudge:
         search_result: Optional[SearchResult] = None,
     ) -> EpistemicEvaluation:
         """Evaluate a claim's veracity, constraint power, and epistemic rationale."""
-        snippets = "\n".join(search_result.snippets) if search_result else "No search context."
-        cache_key = self._hash(claim.claim_text, snippets)
+        lit_context = search_result.format_literature_context() if search_result else "No search context."
+        cache_key = self._hash(claim.claim_text, lit_context)
 
         with self._lock:
             if cache_key in self._cache:
@@ -107,7 +107,7 @@ class EpistemicReasoningJudge:
         # If API key is available, use LLM judge
         if self.api_key:
             try:
-                eval_res = self._query_llm_judge(claim, snippets)
+                eval_res = self._query_llm_judge(claim, lit_context)
                 with self._lock:
                     self._cache[cache_key] = eval_res.model_dump()
                     self._save_cache()

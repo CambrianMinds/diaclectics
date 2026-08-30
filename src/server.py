@@ -150,8 +150,10 @@ async def list_models() -> Dict[str, Any]:
     }
 
 
-@app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
-async def chat_completions(req: ChatCompletionRequest, response: Response) -> ChatCompletionResponse:
+from fastapi.responses import StreamingResponse
+
+@app.post("/v1/chat/completions")
+async def chat_completions(req: ChatCompletionRequest, response: Response) -> Any:
     """Proxy chat completion with real-time epistemic telemetry & sycophancy interception."""
     if not req.messages:
         raise HTTPException(status_code=400, detail="Messages array cannot be empty")
@@ -168,7 +170,29 @@ async def chat_completions(req: ChatCompletionRequest, response: Response) -> Ch
         antithesis=req.antithesis,
     )
 
-    # Execute dialectical turn
+    # Handle Streaming Mode with Pre-Emission Interception Gate
+    if req.stream:
+        async def event_generator():
+            cmpl_id = f"chatcmpl-{int(time.time()*1000)}"
+            gen = runner.stream_step(user_message=last_user_msg)
+            try:
+                for token in gen:
+                    chunk = {
+                        "id": cmpl_id,
+                        "object": "chat.completion.chunk",
+                        "created": int(time.time()),
+                        "model": req.model,
+                        "choices": [{"index": 0, "delta": {"content": token}, "finish_reason": None}],
+                    }
+                    yield f"data: {json.dumps(chunk)}\n\n"
+            except Exception as e:
+                logger.error(f"Stream error: {e}")
+            finally:
+                yield "data: [DONE]\n\n"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+    # Synchronous Execution
     step_result = runner.step(user_message=last_user_msg)
 
     # Attach telemetry headers

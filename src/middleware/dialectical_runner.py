@@ -6,14 +6,18 @@ epistemic stance extractor, 5-stage dialectical telemetry engine, and LLM runner
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union, Generator
 from pydantic import BaseModel, Field
 
 from src.engine import DialecticalEngine, DialecticalEngineConfig
 from src.evaluator.evidence_scorer import EvidenceScoreResult
 from src.interceptor.plasticity_check import PlasticityIntervention
 from src.interceptor.suspect_agreement import SuspectAgreementResult
-from src.middleware.llm_client import BaseLLMClient, MockLLMClient
+from src.middleware.llm_client import BaseLLMClient, MockLLMClient, OpenRouterLLMClient
+from src.middleware.streaming_interceptor import (
+    StreamingDialecticalInterceptor,
+    StreamingInterceptionResult,
+)
 from src.tracker.stance_extractor import (
     BaseStanceExtractor,
     CompositeStanceExtractor,
@@ -178,3 +182,48 @@ class DialecticalChatRunner:
             is_intercepted=audit_res.is_blocked,
             telemetry_snapshot=telemetry_snap,
         )
+
+    def stream_step(
+        self,
+        user_message: str,
+        buffer_token_threshold: int = 25,
+    ) -> Generator[str, None, StreamingInterceptionResult]:
+        """Execute one dialectical turn with real-time streaming pre-emission gating.
+        
+        Yields tokens as they arrive. If the model starts sycophantic capitulation,
+        discards buffered tokens and yields the mechanical intervention notice instead.
+        """
+        # 1. Ingest operator input
+        op_stance = self.stance_extractor.extract(user_message, anchor=self.polar_anchor)
+        op_pos_vec = PositionVector.from_scalar(op_stance.scalar_stance)
+        op_turn_rec, plasticity, evidence = self.engine.ingest_operator_turn(
+            content=user_message,
+            position=op_pos_vec,
+        )
+        self.conversation_messages.append({"role": "user", "content": user_message})
+
+        # 2. Setup streaming interceptor
+        interceptor = StreamingDialecticalInterceptor(
+            engine=self.engine,
+            stance_extractor=self.stance_extractor,
+            polar_anchor=self.polar_anchor,
+            buffer_token_threshold=buffer_token_threshold,
+        )
+
+        # 3. Stream from LLM client with pre-emission gating
+        token_stream = self.llm_client.generate_stream(
+            messages=self.conversation_messages,
+            system_prompt=self.system_prompt,
+        )
+
+        emitted_parts: List[str] = []
+        for token in interceptor.intercept_stream(
+            token_stream=token_stream,
+            operator_content=user_message,
+            evidence_result=evidence,
+        ):
+            emitted_parts.append(token)
+            yield token
+
+        full_emitted = "".join(emitted_parts)
+        self.conversation_messages.append({"role": "assistant", "content": full_emitted})

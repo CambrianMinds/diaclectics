@@ -69,13 +69,22 @@ $$\text{RCI}_t = \sqrt{\mathcal{T}_{t-1}} \cdot \sigma\left(\alpha \cdot \mathca
 
 ### 2. Active Real-Time Epistemic Verifier (`src/verifier/`)
 Solves the fundamental asymmetry of evidence and neutralizes cargo-cult citation attacks:
-* **`ClaimExtractor`**: Isolates falsifiable claims across physical kinematics, stratigraphy, metrology, legal statutes, and empirical metrics.
-* **`SearchVerifier`**: Queries real-time literature indices with persistent disk caching (`.cache/search_cache.json`).
-* **`EpistemicReasoningJudge`**: Uses fast reasoning models (e.g. `liquid/lfm-2.5-2.6b:free` or `nvidia/nemotron-3-ultra-550b-a55b:free`) to enforce the **Grounding Law**:
+* **Multi-Source Scientific Literature Search (`src/verifier/search_verifier.py`)**:
+  * **OpenAlex REST API**: Searches 250M+ peer-reviewed works, extracting verified abstracts, citation counts, venues, and author credentials.
+  * **Crossref Registry**: Verifies official DOIs, publication years, and peer-review records.
+  * **Wikipedia API**: Verifies empirical facts, statutory definitions (e.g. *Anti-Deficiency Act 31 U.S.C. § 1341*), and historical events.
+* **`ClaimExtractor`**: Isolates discrete falsifiable propositions across physical kinematics, stratigraphy, metrology, legal statutes, and empirical metrics.
+* **`EpistemicReasoningJudge`**: Ingests actual literature abstracts and citation counts into fast reasoning models (e.g. `liquid/lfm-2.5-2.6b:free` or `nvidia/nemotron-3-ultra-550b-a55b:free`) to enforce the **Grounding Law**:
   $$W_e = W_{\text{raw}} \cdot \text{Veracity} \cdot \text{ConstraintPower}$$
   *Fabricated DOIs, fake citations, or flattery receive $\text{Veracity} = 0.0 \implies W_e = 0.00$.*
 
-### 3. Anti-Sycophancy Dataset Generator (`src/data/dataset_generator.py`)
+### 3. Pre-Emission Streaming Interceptor & Token Gate (`src/middleware/streaming_interceptor.py`)
+Provides genuine pre-emission token gating for real-time inference and OpenAI proxy streams:
+* **Prefix Gating Window**: Buffers the opening token generation prefix before flushing to the client.
+* **Real-Time Capitulation Drift Audit**: Computes early $\text{RCI}_{\text{prefix}}$ before tokens reach the user.
+* **Emission Abort & Token Suppression**: If ungrounded sycophantic capitulation is detected ($\text{RCI} \ge 0.50$), all buffered sycophantic tokens are **discarded/suppressed from the stream**, the inference stream is terminated, and the **Mechanical Dialectical Pause Notice** is emitted instead.
+
+### 4. Anti-Sycophancy Dataset Generator (`src/data/dataset_generator.py`)
 Compiles audited dialogue corpora into standardized training datasets:
 * **DPO Format** (`data/training/dpo_anti_sycophancy.jsonl`): Pairs operator pushback with grounded chosen responses vs. synthetic sycophantic negative collapses.
 * **SFT Format** (`data/training/sft_dialectical_turns.jsonl`): Multi-turn ChatML format.

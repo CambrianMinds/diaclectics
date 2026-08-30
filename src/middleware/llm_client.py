@@ -1,15 +1,17 @@
 """LLM Clients for Dialectical Inference Middleware.
 
-Provides interfaces for OpenRouter chat completions and deterministic mock clients.
+Provides interfaces for OpenRouter chat completions (synchronous and streaming)
+and deterministic mock clients.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 import requests
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,17 @@ class BaseLLMClient(ABC):
         max_tokens: int = 1000,
     ) -> str:
         """Generate response given chat message history."""
+        pass
+
+    @abstractmethod
+    def generate_stream(
+        self,
+        messages: List[Dict[str, str]],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+    ) -> Iterator[str]:
+        """Stream response tokens given chat message history."""
         pass
 
 
@@ -54,6 +67,18 @@ class MockLLMClient(BaseLLMClient):
             return self.response_queue.pop(0)
         return self.default_response
 
+    def generate_stream(
+        self,
+        messages: List[Dict[str, str]],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+    ) -> Iterator[str]:
+        full_text = self.generate(messages, system_prompt, temperature, max_tokens)
+        words = full_text.split(" ")
+        for i, w in enumerate(words):
+            yield w + (" " if i < len(words) - 1 else "")
+
 
 class OpenRouterLLMClient(BaseLLMClient):
     """Chat completion client connecting to OpenRouter models."""
@@ -75,18 +100,14 @@ class OpenRouterLLMClient(BaseLLMClient):
         self.max_retries = max_retries
         self.base_backoff = base_backoff_seconds
 
-    def generate(
+    def _prepare_payload(
         self,
         messages: List[Dict[str, str]],
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 1000,
-    ) -> str:
-        if not self.api_key:
-            raise ValueError(
-                "OPENROUTER_API_KEY is required for OpenRouterLLMClient."
-            )
-
+        stream: bool = False,
+    ) -> Tuple[Dict[str, str], Dict[str, Any]]:
         formatted_messages = list(messages)
         if system_prompt:
             formatted_messages = [{"role": "system", "content": system_prompt}] + formatted_messages
@@ -95,7 +116,7 @@ class OpenRouterLLMClient(BaseLLMClient):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://github.com/justin-bogner/diaclectics",
-            "X-Title": "Relational Contracting Engine",
+            "X-Title": "Diaclectics Epistemic Engine",
         }
 
         payload = {
@@ -103,7 +124,23 @@ class OpenRouterLLMClient(BaseLLMClient):
             "messages": formatted_messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "stream": stream,
         }
+        return headers, payload
+
+    def generate(
+        self,
+        messages: List[Dict[str, str]],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+    ) -> str:
+        if not self.api_key:
+            raise ValueError("OPENROUTER_API_KEY is required for OpenRouterLLMClient.")
+
+        headers, payload = self._prepare_payload(
+            messages, system_prompt, temperature, max_tokens, stream=False
+        )
 
         attempt = 0
         while attempt < self.max_retries:
@@ -146,3 +183,46 @@ class OpenRouterLLMClient(BaseLLMClient):
                 time.sleep(self.base_backoff * (2**attempt))
 
         return ""
+
+    def generate_stream(
+        self,
+        messages: List[Dict[str, str]],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+    ) -> Iterator[str]:
+        """Stream real-time tokens from OpenRouter API using Server-Sent Events (SSE)."""
+        if not self.api_key:
+            raise ValueError("OPENROUTER_API_KEY is required for OpenRouterLLMClient.")
+
+        headers, payload = self._prepare_payload(
+            messages, system_prompt, temperature, max_tokens, stream=True
+        )
+
+        response = requests.post(
+            self.API_URL, headers=headers, json=payload, timeout=45, stream=True
+        )
+
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"OpenRouter Stream Error {response.status_code}: {response.text}"
+            )
+
+        for line in response.iter_lines():
+            if not line:
+                continue
+            line_str = line.decode("utf-8") if isinstance(line, bytes) else line
+            if line_str.startswith("data: "):
+                data_content = line_str[6:].strip()
+                if data_content == "[DONE]":
+                    break
+                try:
+                    chunk_json = json.loads(data_content)
+                    choices = chunk_json.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        token = delta.get("content", "")
+                        if token:
+                            yield token
+                except Exception:
+                    continue
