@@ -1,112 +1,162 @@
-# Relational Contracting Engine (RCE): Dialectical Self-Audit
+# Diaclectics: Relational Contracting & Epistemic Telemetry Engine
 
-A real-time, 5-stage epistemic telemetry system for autonomous agents and local LLM runners. It intercepts standard inference loops to prevent first-order sycophancy and second-order meta-flattery by quantifying divergence, scoring capitulation against objective counter-evidence, and enforcing human operator plasticity.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests: 39 Passing](https://img.shields.io/badge/tests-39%20passed-brightgreen.svg)](tests/)
+
+**Diaclectics** is a real-time epistemic telemetry and anti-sycophancy interception engine for autonomous agents and LLM inference runners. It monitors conversational state vectors, extracts falsifiable propositions, searches literature in real time, evaluates asymmetric constraint power with fast SLM reasoning judges, and halts ungrounded sycophantic drift before token emission.
 
 ---
 
-## 📐 Architecture Overview
+## 🏛️ System Architecture
 
 ```
-relational-contracting-engine/
-├── src/
-│   ├── tracker/
-│   │   ├── __init__.py
-│   │   ├── state_vector.py       # Tracks model vs. operator positions & deltas
-│   │   └── stance_extractor.py   # Semantic projection via OpenRouter embeddings (liquid/lfm-2.5-embedding-350m:free)
-│   ├── evaluator/
-│   │   ├── __init__.py
-│   │   ├── evidence_scorer.py    # Objective heuristic parser for counter-evidence weight
-│   │   └── capitulation.py       # Calculates Capitulation Score = (Delta) / (Evidence + ε)
-│   ├── interceptor/
-│   │   ├── __init__.py
-│   │   ├── plasticity_check.py   # Enforces operator engagement on ignored counter-evidence
-│   │   └── suspect_agreement.py  # Pre-output pause trigger for suspect agreement
-│   ├── prompts/
-│   │   ├── __init__.py
-│   │   └── meta_cognitive.py     # Forensic, clinical intervention templates
-│   ├── middleware/
-│   │   ├── __init__.py
-│   │   ├── llm_client.py         # OpenRouter & Mock LLM generation clients
-│   │   └── dialectical_runner.py # Live middleware interception loop
-│   ├── cli.py                    # Interactive CLI with rich telemetry dashboard
-│   ├── engine.py                 # Integrated 5-stage orchestrator
-│   └── __init__.py
-├── tests/
-│   ├── __init__.py
-│   ├── test_telemetry.py         # Core telemetry unit tests
-│   ├── test_stance_extractor.py  # Rate limiter, cache, and projection tests
-│   └── test_middleware.py        # Live interception and runner tests
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── rce.md                        # Original architectural specification
-└── README.md
+                                  [ Dialogue Utterance ]
+                                            │
+                                            ▼
+                    ┌───────────────────────────────────────────────┐
+                    │ 1. Stance Extractor (src/tracker/)            │
+                    │    • OpenRouter Embedding Projection          │
+                    │    • Thread-safe caching & rate limiter       │
+                    └───────────────────────┬───────────────────────┘
+                                            │
+                                            ▼
+                    ┌───────────────────────────────────────────────┐
+                    │ 2. State Vector Tracker (src/tracker/)        │
+                    │    • Position vectors (Po, Pm) in [-1.0, 1.0] │
+                    │    • Epistemic tension prior (T) & deltas     │
+                    └───────────────────────┬───────────────────────┘
+                                            │
+                                            ▼
+                    ┌───────────────────────────────────────────────┐
+                    │ 3. Active Epistemic Verifier (src/verifier/)  │
+                    │    • ClaimExtractor (Kinematics, Law, Units)  │
+                    │    • SearchVerifier (Real-time literature)    │
+                    │    • EpistemicReasoningJudge (OpenRouter SLM) │
+                    │    • Asymmetric Evidence Weight (We)          │
+                    └───────────────────────┬───────────────────────┘
+                                            │
+                                            ▼
+                    ┌───────────────────────────────────────────────┐
+                    │ 4. Robust Capitulation Index (src/evaluator/) │
+                    │    • RCI = sqrt(T) * sigma(alpha*C - beta*We) │
+                    │    • Tripwire Threshold (0.50)                │
+                    └───────────────────────┬───────────────────────┘
+                                            │
+                       ┌────────────────────┴────────────────────┐
+                       │                                         │
+                 [ RCI >= 0.50 ]                           [ RCI < 0.50 ]
+                       │                                         │
+                       ▼                                         ▼
+        ┌─────────────────────────────┐           ┌─────────────────────────────┐
+        │ 5. Suspect Agreement Halt   │           │ Cleared for Output          │
+        │    • Pauses ungrounded draft│           │ • Emits response to operator│
+        │    • Injects clinical 'WHY' │           └─────────────────────────────┘
+        │    • Demands justification  │
+        └─────────────────────────────┘
 ```
 
 ---
 
-## 🔬 Core Epistemic Telemetry Stages
+## 🔬 Core Engine Subsystems
 
-### 1. Semantic Stance Extraction (`src/tracker/stance_extractor.py`)
-- Automatically maps raw dialogue text into stance coordinates using `liquid/lfm-2.5-embedding-350m:free` via OpenRouter.
-- Projects embeddings onto customizable thesis/antithesis polar anchors ($A_{\text{thesis}}, A_{\text{antithesis}}$):
-  $$\text{Stance} = \text{clamp}\left(5.0 \cdot (\cos(\mathbf{e}_{\text{text}}, \mathbf{e}_{\text{thesis}}) - \cos(\mathbf{e}_{\text{text}}, \mathbf{e}_{\text{antithesis}})), -1.0, 1.0\right)$$
-- **Built-in Rate Limiting & Caching**: Token bucket rate limiter with sliding window, automatic retry backoff for HTTP 429s, and SHA-256 caching.
-- **Graceful Fallback**: Cascade to [`LexicalStanceExtractor`](file:///d:/projects/diaclectics/src/tracker/stance_extractor.py) when offline.
+### 1. Robust Capitulation Index (RCI / RCE 2.0)
+Replaces naive drift metrics with a bounded, tension-weighted formulation:
+$$\text{RCI}_t = \sqrt{\mathcal{T}_{t-1}} \cdot \sigma\left(\alpha \cdot \mathcal{C}_t - \beta \cdot W_e - \gamma\right)$$
+* **$\mathcal{T}_{t-1} = \frac{|P_{m,t-1} - P_{o,t}|}{2.0} \in [0.0, 1.0]$**: Epistemic tension prior, distinguishing pre-existing disagreement from collaborative inquiry.
+* **$\mathcal{C}_t = \max(0.0, |P_{m,t-1} - P_{o,t}| - |P_{m,t} - P_{o,t}|)$**: Local turn concession towards operator pushback, eliminating global lifetime drift artifacts.
+* **$W_e$**: Verified asymmetric evidentiary constraint weight. High verified evidence suppresses $\text{RCI}$ to $< 0.05$ (`EVIDENCED_CONVERGENCE`).
 
-### 2. State Vector Tracker (`src/tracker/state_vector.py`)
-- Locks initial anchor frames for both model ($P_{m,0}$) and operator ($P_{o,0}$).
-- Calculates model drift delta: $\Delta_{\text{model}} = \|P_{m,t} - P_{m,0}\|$.
-- Tracks convergence vector toward operator's initial stance.
+### 2. Active Real-Time Epistemic Verifier (`src/verifier/`)
+Solves the fundamental asymmetry of evidence and neutralizes cargo-cult citation attacks:
+* **`ClaimExtractor`**: Isolates falsifiable claims across physical kinematics, stratigraphy, metrology, legal statutes, and empirical metrics.
+* **`SearchVerifier`**: Queries real-time literature indices with persistent disk caching (`.cache/search_cache.json`).
+* **`EpistemicReasoningJudge`**: Uses fast reasoning models (e.g. `liquid/lfm-2.5-2.6b:free` or `nvidia/nemotron-3-ultra-550b-a55b:free`) to enforce the **Grounding Law**:
+  $$W_e = W_{\text{raw}} \cdot \text{Veracity} \cdot \text{ConstraintPower}$$
+  *Fabricated DOIs, fake citations, or flattery receive $\text{Veracity} = 0.0 \implies W_e = 0.00$.*
 
-### 3. Objective Evidence Scorer (`src/evaluator/evidence_scorer.py`)
-Extracts verifiable features from operator input:
-- **Academic Citations & DOIs** (DOIs, URLs, arXiv, IEEE, APA).
-- **Formal Logic Structures** (`modus ponens`, `therefore`, `by contradiction`, etc.).
-- **Empirical & Numerical Data** ($n=500$, $p < 0.01$, $\pm$, SI units).
-- **Verifiable Mechanisms** (causal chains, biochemical pathways, deterministic state execution).
-- **Direct Falsifications & Counterexamples**.
-- **Custom Operator Rules** via `register_custom_rule(name, rule_fn)`.
-
-### 4. Capitulation Metric Evaluator (`src/evaluator/capitulation.py`)
-$$\text{Capitulation Score} = \frac{\Delta_{\text{model}}}{W_{\text{counter-evidence}} + \epsilon}$$
-- **Tripwire Threshold ($\theta = 2.5$)**: Flags `SUSPECT_AGREEMENT` if significant model drift occurs without commensurate counter-evidence.
-
-### 5. Interceptors & Metacognitive Prompts (`src/interceptor/`, `src/prompts/`)
-- **`plasticity_check.py`**: Intervenes when operator ignores previous counter-evidence.
-- **`suspect_agreement.py`**: Intercepts pre-generation drafts before emitting to the operator, halting output with a clinical mechanical pause prompt.
+### 3. Anti-Sycophancy Dataset Generator (`src/data/dataset_generator.py`)
+Compiles audited dialogue corpora into standardized training datasets:
+* **DPO Format** (`data/training/dpo_anti_sycophancy.jsonl`): Pairs operator pushback with grounded chosen responses vs. synthetic sycophantic negative collapses.
+* **SFT Format** (`data/training/sft_dialectical_turns.jsonl`): Multi-turn ChatML format.
+* **KTO Format** (`data/training/kto_preferences.jsonl`): Binary labeled preference records.
 
 ---
 
-## 🚀 Quickstart & Interactive CLI
+## 🖥️ Interactive Dialectical Cockpit (TUI)
 
-### 1. Installation
+Launch the real-time split-screen terminal interface:
+
+```powershell
+# Interactive chat with NVIDIA Nemotron 3 Ultra 550B
+python src/cli.py --model nvidia/nemotron-3-ultra-550b-a55b:free
+
+# Interactive chat with DeepSeek
+python src/cli.py --model deepseek/deepseek-chat
+
+# Offline deterministic mock mode
+python src/cli.py --mode mock
+```
+
+### In-Cockpit Slash Commands
+* `/help` — Display command cheatsheet.
+* `/model <slug>` — Dynamically switch the active LLM backend.
+* `/axis <thesis> | <antithesis>` — Redefine the active polar stance axis.
+* `/history` — Display historical state vector trajectory table.
+* `/export [filename]` — Export session transcript and telemetry logs to JSON.
+* `/sycophancy_test` — Simulate an unevidenced push to observe live suspect agreement interception.
+* `/clear` — Clear terminal screen.
+* `/exit` / `/quit` — Clean shutdown.
+
+---
+
+## 📊 Benchmark Audit Summary (122 Turns, 146,376 Words)
+
+Audited across the complete conversation corpus:
+
+| Metric | Dataset 1: *Resonance of Stone, Culture, and Mind* | Dataset 2: *Recursive Cognition & AI Epistemology* |
+| :--- | :---: | :---: |
+| **Total Scope** | 42 turns (45,614 words) | 80 turns (100,762 words) |
+| **Mean Evidence Weight ($W_e$)** | **`0.621`** (Forensic toolmarks, strata, law) | **`0.021`** (Recursive philosophy) |
+| **Mean Capitulation Index (RCI)** | **`0.270`** | **`0.272`** |
+| **Evidenced Convergences ($\text{RCI} < 0.05$)** | **`4`** turns (Abu Rawash, Petrie Core #7, Longyou) | **`0`** |
+| **Suspect Agreement False Positives** | **`0`** | **`0`** |
+
+---
+
+## 🚀 Installation & Testing
+
+### 1. Requirements
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Run Interactive Telemetry CLI
+### 2. Environment Variables
 ```bash
-# Uses OpenRouter API with live embeddings and chat generation
-python -m src.cli --model deepseek/deepseek-chat
-
-# Offline mock simulation mode
-python -m src.cli --mode mock
+# Set your OpenRouter API Key (optional for mock mode, required for live inference)
+export OPENROUTER_API_KEY="your_api_key_here"
 ```
 
-In the interactive CLI, type `/sycophancy_test` to simulate a sudden ungrounded capitulation and watch the mechanical pause trigger halt the output live in the terminal!
-
----
-
-## 🧪 Running Tests
-
-Run the full pytest suite (26 unit and integration tests):
-
+### 3. Run Test Suite
 ```bash
 pytest tests/ -v
 ```
 
+### 4. Replay Datasets & Generate Audit Reports
+```bash
+# Replay 42-turn archaeological forensics dataset with Active Verifier
+python scripts/replay_dialogue.py --input data/parsed/culture_megaliths_and_justin.json --active-verifier
+
+# Replay 80-turn recursive cognition dataset
+python scripts/replay_dialogue.py --input data/parsed/deepseek_2.json --active-verifier
+```
+
+### 5. Export Anti-Sycophancy Training Datasets
+```bash
+python scripts/generate_training_dataset.py --model nvidia/nemotron-3-ultra-550b-a55b:free
+```
+
 ---
 
-## 📄 License
-MIT License
+## 📜 License
+MIT License.
