@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  telemetry-audit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: relational_contracting_engine
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    command: pytest tests/test_telemetry.py -v
