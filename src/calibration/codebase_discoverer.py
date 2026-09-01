@@ -191,8 +191,9 @@ class EpistemicCodebaseDiscoverer:
         self,
         axis_name: str,
         invariants: List[DiscoveredInvariant]
-    ) -> AxisSeedModel:
-        """Construct an AxisSeedModel ready for the calibration optimizer."""
+    ) -> AxisDefinition:
+        """Construct an AxisDefinition ready for the calibration optimizer."""
+
         if not invariants:
             raise ValueError("Cannot create seed profile from empty invariants list.")
 
