@@ -88,10 +88,30 @@ def init_db(db_path: Optional[str] = None) -> None:
                 first_cited_at REAL NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS local_corpus (
+                doc_id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                doi TEXT,
+                authors_json TEXT,
+                year INTEGER,
+                venue TEXT,
+                citation_count INTEGER DEFAULT 0,
+                vector_json TEXT,
+                created_at REAL NOT NULL
+            );
+
+            CREATE VIRTUAL TABLE IF NOT EXISTS local_corpus_fts USING fts5(
+                doc_id UNINDEXED,
+                title,
+                content
+            );
+
             CREATE INDEX IF NOT EXISTS idx_turns_session ON turns(session_id, turn_index);
             CREATE INDEX IF NOT EXISTS idx_propositions_status ON propositions(status);
             CREATE INDEX IF NOT EXISTS idx_propositions_claim ON propositions(claim_text);
             CREATE INDEX IF NOT EXISTS idx_citations_doi ON citations(doi);
+            CREATE INDEX IF NOT EXISTS idx_corpus_doi ON local_corpus(doi);
             """
         )
     conn.close()

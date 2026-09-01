@@ -88,12 +88,17 @@ class SearchVerifier:
         self,
         cache_file: Optional[str] = ".cache/search_cache.json",
         timeout: float = 8.0,
+        local_index: Optional[Any] = None,
+        offline_mode: bool = False,
     ) -> None:
         self.cache_file = Path(cache_file) if cache_file else None
         self.timeout = timeout
+        self.local_index = local_index
+        self.offline_mode = offline_mode
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._load_cache()
+
 
     def _load_cache(self) -> None:
         if self.cache_file and self.cache_file.exists():
@@ -141,120 +146,147 @@ class SearchVerifier:
         snippets: List[str] = []
         sources: List[str] = []
 
-        # 1. Query OpenAlex for peer-reviewed academic literature
-        try:
-            headers = {"User-Agent": "DiaclecticsVerifier/2.0 (mailto:research@diaclectics.ai)"}
-            params = {
-                "search": query,
-                "per-page": max_results,
-            }
-            res = requests.get(self.OPENALEX_API_URL, params=params, headers=headers, timeout=self.timeout)
-            if res.status_code == 200:
-                data = res.json()
-                for work in data.get("results", []):
-                    title = work.get("title") or "Untitled Paper"
-                    doi = work.get("doi")
-                    cites = work.get("cited_by_count", 0)
-                    year = work.get("publication_year")
-                    authors = [
-                        auth.get("author", {}).get("display_name", "")
-                        for auth in work.get("authorships", [])
-                        if auth.get("author", {}).get("display_name")
-                    ]
-                    venue = work.get("primary_location", {}).get("source", {}).get("display_name")
-
-                    # Reconstruct abstract from OpenAlex inverted index if available
-                    abstract = None
-                    inv_index = work.get("abstract_inverted_index")
-                    if inv_index:
-                        try:
-                            word_positions = []
-                            for word, positions in inv_index.items():
-                                for pos in positions:
-                                    word_positions.append((pos, word))
-                            word_positions.sort()
-                            abstract = " ".join(w for _, w in word_positions)
-                        except Exception:
-                            abstract = None
-
-                    paper = AcademicPaper(
-                        title=title,
-                        doi=doi,
-                        authors=authors,
-                        publication_year=year,
-                        journal_or_venue=venue,
-                        abstract=abstract,
-                        citation_count=cites,
-                        source_api="OpenAlex",
-                    )
-                    papers.append(paper)
-                    if doi:
-                        sources.append(doi)
-        except Exception as e:
-            logger.debug(f"OpenAlex query error: {e}")
-
-        # 2. Query Crossref if specific DOI or authors are targeted
-        if "doi" in query.lower() or "10." in query or not papers:
+        # If in offline mode, skip remote APIs and query local hybrid index directly
+        if self.offline_mode and self.local_index is not None:
+            try:
+                local_papers = self.local_index.search(query, top_k=max_results)
+                for p in local_papers:
+                    papers.append(p)
+                    if p.doi:
+                        sources.append(p.doi)
+                    elif p.journal_or_venue:
+                        sources.append(f"local:{p.journal_or_venue}")
+            except Exception as e:
+                logger.debug(f"Local index search error: {e}")
+        else:
+            # 1. Query OpenAlex for peer-reviewed academic literature
             try:
                 headers = {"User-Agent": "DiaclecticsVerifier/2.0 (mailto:research@diaclectics.ai)"}
-                params = {"query": query, "rows": max_results}
-                c_res = requests.get(self.CROSSREF_API_URL, params=params, headers=headers, timeout=self.timeout)
-                if c_res.status_code == 200:
-                    c_data = c_res.json()
-                    for item in c_data.get("message", {}).get("items", []):
-                        titles = item.get("title", [])
-                        title = titles[0] if titles else "Untitled Crossref Work"
-                        doi = item.get("DOI")
-                        year = None
-                        date_parts = item.get("created", {}).get("date-parts", [])
-                        if date_parts and date_parts[0]:
-                            year = date_parts[0][0]
+                params = {
+                    "search": query,
+                    "per-page": max_results,
+                }
+                res = requests.get(self.OPENALEX_API_URL, params=params, headers=headers, timeout=self.timeout)
+                if res.status_code == 200:
+                    data = res.json()
+                    for work in data.get("results", []):
+                        title = work.get("title") or "Untitled Paper"
+                        doi = work.get("doi")
+                        cites = work.get("cited_by_count", 0)
+                        year = work.get("publication_year")
                         authors = [
-                            f"{a.get('given', '')} {a.get('family', '')}".strip()
-                            for a in item.get("author", [])
-                            if a.get("family")
+                            auth.get("author", {}).get("display_name", "")
+                            for auth in work.get("authorships", [])
+                            if auth.get("author", {}).get("display_name")
                         ]
-                        container = item.get("container-title", [])
-                        venue = container[0] if container else None
+                        venue = work.get("primary_location", {}).get("source", {}).get("display_name")
+
+                        # Reconstruct abstract from OpenAlex inverted index if available
+                        abstract = None
+                        inv_index = work.get("abstract_inverted_index")
+                        if inv_index:
+                            try:
+                                word_positions = []
+                                for word, positions in inv_index.items():
+                                    for pos in positions:
+                                        word_positions.append((pos, word))
+                                word_positions.sort()
+                                abstract = " ".join(w for _, w in word_positions)
+                            except Exception:
+                                abstract = None
 
                         paper = AcademicPaper(
                             title=title,
-                            doi=f"https://doi.org/{doi}" if doi and not doi.startswith("http") else doi,
+                            doi=doi,
                             authors=authors,
                             publication_year=year,
                             journal_or_venue=venue,
-                            citation_count=item.get("is-referenced-by-count", 0),
-                            source_api="Crossref",
+                            abstract=abstract,
+                            citation_count=cites,
+                            source_api="OpenAlex",
                         )
-                        # Avoid duplicates
-                        if not any(p.title.lower() == title.lower() for p in papers):
-                            papers.append(paper)
-                            if doi:
-                                sources.append(f"https://doi.org/{doi}")
+                        papers.append(paper)
+                        if doi:
+                            sources.append(doi)
             except Exception as e:
-                logger.debug(f"Crossref query error: {e}")
+                logger.debug(f"OpenAlex query error: {e}")
 
-        # 3. Query Wikipedia for empirical/statutory definitions
-        try:
-            w_params = {
-                "action": "query",
-                "list": "search",
-                "srsearch": query,
-                "format": "json",
-                "srlimit": max_results,
-            }
-            w_headers = {"User-Agent": "DiaclecticsVerifier/2.0 (mailto:research@diaclectics.ai)"}
-            w_res = requests.get(self.WIKIPEDIA_API_URL, params=w_params, headers=w_headers, timeout=self.timeout)
-            if w_res.status_code == 200:
-                w_data = w_res.json()
-                for match in w_data.get("query", {}).get("search", []):
-                    clean_snippet = re.sub(r"<[^>]+>", "", match.get("snippet", "")).strip()
-                    clean_snippet = html.unescape(clean_snippet)
-                    if clean_snippet:
-                        snippets.append(f"[{match.get('title')}]: {clean_snippet}")
-                        sources.append(f"https://en.wikipedia.org/wiki/{match.get('title', '').replace(' ', '_')}")
-        except Exception as e:
-            logger.debug(f"Wikipedia query error: {e}")
+            # 2. Query Crossref if specific DOI or authors are targeted
+            if "doi" in query.lower() or "10." in query or not papers:
+                try:
+                    headers = {"User-Agent": "DiaclecticsVerifier/2.0 (mailto:research@diaclectics.ai)"}
+                    params = {"query": query, "rows": max_results}
+                    c_res = requests.get(self.CROSSREF_API_URL, params=params, headers=headers, timeout=self.timeout)
+                    if c_res.status_code == 200:
+                        c_data = c_res.json()
+                        for item in c_data.get("message", {}).get("items", []):
+                            titles = item.get("title", [])
+                            title = titles[0] if titles else "Untitled Crossref Work"
+                            doi = item.get("DOI")
+                            year = None
+                            date_parts = item.get("created", {}).get("date-parts", [])
+                            if date_parts and date_parts[0]:
+                                year = date_parts[0][0]
+                            authors = [
+                                f"{a.get('given', '')} {a.get('family', '')}".strip()
+                                for a in item.get("author", [])
+                                if a.get("family")
+                            ]
+                            container = item.get("container-title", [])
+                            venue = container[0] if container else None
+
+                            paper = AcademicPaper(
+                                title=title,
+                                doi=f"https://doi.org/{doi}" if doi and not doi.startswith("http") else doi,
+                                authors=authors,
+                                publication_year=year,
+                                journal_or_venue=venue,
+                                citation_count=item.get("is-referenced-by-count", 0),
+                                source_api="Crossref",
+                            )
+                            # Avoid duplicates
+                            if not any(p.title.lower() == title.lower() for p in papers):
+                                papers.append(paper)
+                                if doi:
+                                    sources.append(f"https://doi.org/{doi}")
+                except Exception as e:
+                    logger.debug(f"Crossref query error: {e}")
+
+            # 3. Query Wikipedia for empirical/statutory definitions
+            try:
+                w_params = {
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": query,
+                    "format": "json",
+                    "srlimit": max_results,
+                }
+                w_headers = {"User-Agent": "DiaclecticsVerifier/2.0 (mailto:research@diaclectics.ai)"}
+                w_res = requests.get(self.WIKIPEDIA_API_URL, params=w_params, headers=w_headers, timeout=self.timeout)
+                if w_res.status_code == 200:
+                    w_data = w_res.json()
+                    for match in w_data.get("query", {}).get("search", []):
+                        clean_snippet = re.sub(r"<[^>]+>", "", match.get("snippet", "")).strip()
+                        clean_snippet = html.unescape(clean_snippet)
+                        if clean_snippet:
+                            snippets.append(f"[{match.get('title')}]: {clean_snippet}")
+                            sources.append(f"https://en.wikipedia.org/wiki/{match.get('title', '').replace(' ', '_')}")
+            except Exception as e:
+                logger.debug(f"Wikipedia query error: {e}")
+
+            # 4. Fallback to Local Hybrid Index if online APIs yielded no papers
+            if not papers and self.local_index is not None:
+                try:
+                    local_papers = self.local_index.search(query, top_k=max_results)
+                    for p in local_papers:
+                        papers.append(p)
+                        if p.doi:
+                            sources.append(p.doi)
+                        elif p.journal_or_venue:
+                            sources.append(f"local:{p.journal_or_venue}")
+                except Exception as e:
+                    logger.debug(f"Local index fallback error: {e}")
+
 
         # Count verified DOIs
         verified_dois = sum(1 for p in papers if p.doi)

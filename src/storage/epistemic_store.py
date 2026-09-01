@@ -251,6 +251,29 @@ class EpistemicKnowledgeStore:
         conn.close()
         return results
 
+    def get_session_turns(self, session_id: str) -> List[Dict[str, Any]]:
+        """Retrieve all recorded turns for a specific session ordered by turn index."""
+        conn = get_db_connection(self.db_path)
+        rows = conn.execute(
+            "SELECT * FROM turns WHERE session_id = ? ORDER BY turn_index ASC",
+            (session_id,),
+        ).fetchall()
+        results = [dict(r) for r in rows]
+        conn.close()
+        return results
+
+    def get_session_citations(self, session_id: str) -> List[Dict[str, Any]]:
+        """Retrieve all citations associated with a specific session."""
+        conn = get_db_connection(self.db_path)
+        rows = conn.execute(
+            "SELECT * FROM citations WHERE session_id = ? ORDER BY turn_index ASC",
+            (session_id,),
+        ).fetchall()
+        results = [dict(r) for r in rows]
+        conn.close()
+        return results
+
+
     def get_epistemic_knowledge_graph(
         self,
         session_id: Optional[str] = None,

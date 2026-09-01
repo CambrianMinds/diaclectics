@@ -85,9 +85,11 @@ endpoints:
 
 ---
 
-## 6. System Prompt Presets
+## 6. System Prompt Presets & Epistemic Charter
 
-Pre-packaged prompts are located in `integrations/prompts/`:
-- `anti_sycophancy_core.md`: General-purpose anti-sycophantic assistant.
-- `forensic_arbiter.md`: Physical sciences, toolmarks, kinematics, and metrology.
-- `socratic_adversary.md`: Socratic red-teaming and assumption stress-testing.
+Pre-packaged prompts and constitutions are located in `templates/` and `integrations/prompts/`:
+- `templates/EPISTEMIC_CHARTER.md`: Master epistemic contract and anti-sycophantic behavioral constitution.
+- `integrations/prompts/anti_sycophancy_core.md`: General-purpose anti-sycophantic assistant.
+- `integrations/prompts/forensic_arbiter.md`: Physical sciences, toolmarks, kinematics, and metrology.
+- `integrations/prompts/socratic_adversary.md`: Socratic red-teaming and assumption stress-testing.
+

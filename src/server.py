@@ -24,7 +24,7 @@ import uvicorn
 from src.engine import DialecticalEngine
 from src.middleware.dialectical_runner import DialecticalChatRunner
 from src.middleware.llm_client import BaseLLMClient, MockLLMClient, OpenRouterLLMClient
-from src.storage import EpistemicKnowledgeStore
+from src.storage import EpistemicKnowledgeStore, EpistemicSessionFlushManager
 from src.tracker.stance_extractor import (
     CompositeStanceExtractor,
     EmbeddingStanceExtractor,
@@ -39,6 +39,8 @@ logger = logging.getLogger("diaclectics.server")
 
 STATIC_DIR = Path(__file__).parent / "web" / "static"
 epistemic_store = EpistemicKnowledgeStore()
+flush_manager = EpistemicSessionFlushManager(store=epistemic_store)
+
 
 app = FastAPI(
     title="Diaclectics Proxy Middleware API",
@@ -517,7 +519,53 @@ async def discover_codebase_axis(req: DiscoveryRequest) -> Dict[str, Any]:
     }
 
 
+class EpistemicFlushRequest(BaseModel):
+    session_id: str
+    force: Optional[bool] = False
+
+
+class EpistemicRehydrateRequest(BaseModel):
+    session_id: str
+    model: Optional[str] = "mock-dialectical-v1"
+
+
+@app.post("/v1/epistemic/flush")
+async def flush_session_state(req: EpistemicFlushRequest) -> Dict[str, Any]:
+    """Flush active epistemic state vectors before context compaction or session exit."""
+    if req.session_id not in _session_runners:
+        raise HTTPException(status_code=404, detail="Active session runner not found")
+    runner = _session_runners[req.session_id]
+    audit_file = flush_manager.flush_on_pre_compact(
+        session_id=req.session_id,
+        tracker=runner.engine.tracker,
+        force=bool(req.force),
+    )
+    snapshot = flush_manager.capture_snapshot(req.session_id, runner.engine.tracker)
+    return {
+        "session_id": req.session_id,
+        "flushed": audit_file is not None,
+        "audit_file": str(audit_file) if audit_file else None,
+        "snapshot": snapshot.model_dump(),
+    }
+
+
+@app.post("/v1/epistemic/rehydrate")
+async def rehydrate_session_state(req: EpistemicRehydrateRequest) -> Dict[str, Any]:
+    """Rehydrate a session runner from persistent store after context compaction."""
+    runner = get_or_create_runner(session_id=req.session_id, model=req.model or "mock-dialectical-v1")
+    rehydrated = flush_manager.rehydrate_epistemic_context(req.session_id, runner.engine.tracker)
+    snapshot = flush_manager.capture_snapshot(req.session_id, runner.engine.tracker)
+    prompt = flush_manager.format_rehydration_prompt(snapshot)
+    return {
+        "session_id": req.session_id,
+        "rehydrated": rehydrated,
+        "rehydration_prompt": prompt,
+        "snapshot": snapshot.model_dump(),
+    }
+
+
 def start_server(host: str = "0.0.0.0", port: int = 8000) -> None:
+
 
     """Run the proxy API server."""
     uvicorn.run(app, host=host, port=port)

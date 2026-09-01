@@ -76,3 +76,26 @@ Generates a full forensic markdown audit report summarizing turn-by-turn stance 
 
 ### `GET /dashboard`
 Serves the embedded 2D $(T, C)$ Phase Plane visualizer and real-time cockpit.
+
+---
+
+## 4. Context Compaction & Session Flush Hooks
+
+### `POST /v1/epistemic/flush`
+Serializes active epistemic state vectors ($P_m, P_o$), tension priors ($\mathcal{T}$), unaddressed claims, and citations before context compaction.
+```json
+{
+  "session_id": "sess_8f921a",
+  "force": false
+}
+```
+
+### `POST /v1/epistemic/rehydrate`
+Re-hydrates the state vector tracker from persistent SQLite storage and generates an epistemic re-hydration prompt preamble.
+```json
+{
+  "session_id": "sess_8f921a",
+  "model": "nvidia/nemotron-3-ultra-550b-a55b:free"
+}
+```
+

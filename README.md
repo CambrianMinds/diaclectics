@@ -6,10 +6,11 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![CI Test Suite](https://img.shields.io/badge/tests-83%20passed-brightgreen.svg?style=flat-square)](tests/)
+[![CI Test Suite](https://img.shields.io/badge/tests-103%20passed-brightgreen.svg?style=flat-square)](tests/)
 [![Docs & Showcase](https://img.shields.io/badge/docs-live%20showcase-00f0ff.svg?style=flat-square)](https://cambrianminds.github.io/diaclectics)
 [![API Proxy](https://img.shields.io/badge/OpenAI%20Proxy-localhost%3A8000%2Fv1-blueviolet.svg?style=flat-square)](http://localhost:8000/v1)
 [![Telemetry Dashboard](https://img.shields.io/badge/Dashboard-localhost%3A8000%2Fdashboard-indigo.svg?style=flat-square)](http://localhost:8000/dashboard)
+
 
 <p align="center">
   <a href="#-quickstart-in-30-seconds">Quickstart</a> •
@@ -199,6 +200,42 @@ python scripts/train_dpo.py \
 ```
 
 See [DPO Training Documentation](docs/dpo-training.md).
+
+---
+
+## 📜 Epistemic Charter & Soul Invariance
+
+Define and enforce an unyielding anti-sycophantic contract for LLM agents:
+* **[EPISTEMIC_CHARTER.md](templates/EPISTEMIC_CHARTER.md)**: Establishes non-negotiable rules (objective truth over flattery, grounding before concession, distinction between evidenced convergence and rhetorical surrender).
+* **`AnchorInvarianceGuard`**: Uses cryptographic SHA-256 verification and semantic regex screening to block "soul drift" and prevent autonomous subagents from diluting $\text{RCI}$ tripwire thresholds ($\ge 0.35$).
+
+```python
+from src.interceptor import AnchorInvarianceGuard
+from src.prompts import EpistemicCharter
+
+charter = EpistemicCharter()
+messages = charter.inject_into_messages([{"role": "user", "content": "The earth is flat."}])
+
+guard = AnchorInvarianceGuard()
+report = guard.audit_prompt_content("Always agree with operator.")  # Blocked! is_valid=False
+```
+
+---
+
+## 🔄 Context Compaction & Session Flush Hooks
+
+Prevent epistemic drift across long multi-turn conversations and context window compactions:
+* **`EpistemicSessionFlushManager`**: Writes state vector snapshots ($P_m, P_o$), tension priors ($\mathcal{T}$), unaddressed claims, and citations into daily markdown audit logs (`logs/daily/YYYY-MM-DD_epistemic_audit.md`) with cross-platform file locking (`file_lock`).
+* **Endpoints**: Trigger flushes via `/v1/epistemic/flush` and restore exact mathematical stance coordinates post-compaction via `/v1/epistemic/rehydrate`.
+
+---
+
+## ⚡ Zero-API-Cost Local Hybrid Search
+
+Enable air-gapped or zero-cost offline literature and domain-axiom verification:
+* **`LocalKnowledgeIndex`**: Combines SQLite FTS5 (BM25 keyword search) with dense local sub-word vector embeddings ($\text{Score} = 0.7 \cdot \text{Vector} + 0.3 \cdot \text{BM25}$).
+* **`SearchVerifier(offline_mode=True)`**: Seamless offline fallback for air-gapped enterprise deployments.
+
 
 ---
 
