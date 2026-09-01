@@ -157,8 +157,9 @@ class EpistemicCodebaseDiscoverer:
             query_terms = [invariant.name, invariant.domain]
         query = f"{invariant.domain} " + " ".join(query_terms)
 
-        search_res = self.search_verifier.search(query, limit=3)
+        search_res = self.search_verifier.search(query)
         invariant.literature_citations = search_res.papers_found
+
 
         # Synthesize literature-backed polar anchors
         domain_title = invariant.domain.replace("_", " ").title()
