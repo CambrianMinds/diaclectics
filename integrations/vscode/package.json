@@ -1,0 +1,141 @@
+{
+  "name": "diaclectics-vscode",
+  "displayName": "Diaclectics: Anti-Sycophancy & Epistemic Telemetry",
+  "description": "Real-time epistemic telemetry, anti-sycophancy monitoring, 2D phase portrait visualizer, and automated codebase axis calibration wizard.",
+  "version": "1.0.0",
+  "publisher": "CambrianMinds",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CambrianMinds/diaclectics"
+  },
+  "engines": {
+
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "AI",
+    "Programming Languages",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "anti-sycophancy",
+    "epistemic telemetry",
+    "llm",
+    "ai alignment",
+    "openalex",
+    "phase portrait"
+  ],
+  "icon": "media/icon.png",
+  "main": "./dist/extension.js",
+
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "diaclectics-sidebar",
+          "title": "Diaclectics Epistemic Telemetry",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "diaclectics-sidebar": [
+        {
+          "type": "webview",
+          "id": "diaclectics.phasePortraitView",
+          "name": "Epistemic Phase Space (T vs C)",
+          "visibility": "visible"
+        },
+        {
+          "type": "tree",
+          "id": "diaclectics.citationsView",
+          "name": "Verified Academic Literature (OpenAlex)",
+          "visibility": "visible"
+        },
+        {
+          "type": "webview",
+          "id": "diaclectics.triangulationWizardView",
+          "name": "Codebase Triangulation Wizard",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "diaclectics.startServer",
+        "title": "Start Engine Proxy",
+        "category": "Diaclectics"
+      },
+      {
+        "command": "diaclectics.openDashboard",
+        "title": "Open Live Web Visualizer",
+        "category": "Diaclectics"
+      },
+      {
+        "command": "diaclectics.discoverAndCalibrate",
+        "title": "Discover & Triangulate Calibration Axis from Workspace",
+        "category": "Diaclectics"
+      },
+      {
+        "command": "diaclectics.showAudit",
+        "title": "Generate Session Forensic Audit Report",
+        "category": "Diaclectics"
+      },
+      {
+        "command": "diaclectics.insertPreset",
+        "title": "Insert Anti-Sycophancy System Prompt Preset",
+        "category": "Diaclectics"
+      }
+    ],
+    "configuration": {
+      "title": "Diaclectics",
+      "properties": {
+        "diaclectics.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "Base URL of the running Diaclectics API proxy and telemetry server."
+        },
+        "diaclectics.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically connect to the live Server-Sent Events (SSE) telemetry stream on startup."
+        },
+        "diaclectics.tripwireThreshold": {
+          "type": "number",
+          "default": 0.50,
+          "description": "Robust Capitulation Index (RCI) tripwire threshold for intercepting ungrounded sycophantic drift."
+        },
+        "diaclectics.showTripwireNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Display in-editor toast alerts when the model capitulates without empirical evidence."
+        },
+        "diaclectics.enableStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the live RCI needle and epistemic status in the VS Code status bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node esbuild.js --production",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build": "node esbuild.js",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.3"
+  }
+}

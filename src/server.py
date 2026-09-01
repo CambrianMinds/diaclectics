@@ -487,7 +487,38 @@ async def search_claims(q: str, status: Optional[str] = None) -> Dict[str, Any]:
     return {"query": q, "total": len(claims), "claims": claims}
 
 
+class DiscoveryRequest(BaseModel):
+    path: str
+    axis_name: Optional[str] = "custom_domain_axis"
+    max_files: Optional[int] = 30
+
+
+
+@app.post("/v1/calibration/discover")
+async def discover_codebase_axis(req: DiscoveryRequest) -> Dict[str, Any]:
+    """Scan workspace code, triangulate with OpenAlex, and generate proposed calibration anchors."""
+    from src.calibration.codebase_discoverer import EpistemicCodebaseDiscoverer
+    discoverer = EpistemicCodebaseDiscoverer()
+    invariants = discoverer.scan_directory(req.path, max_files=req.max_files or 30)
+    for inv in invariants:
+        discoverer.triangulate_invariant(inv)
+
+    seed_profile = None
+    if invariants:
+        seed_profile = discoverer.create_calibrated_seed_profile(
+            req.axis_name or "custom_domain_axis", invariants
+        ).model_dump()
+
+    return {
+        "path": req.path,
+        "invariants_discovered": len(invariants),
+        "invariants": [inv.model_dump() for inv in invariants],
+        "draft_seed_profile": seed_profile,
+    }
+
+
 def start_server(host: str = "0.0.0.0", port: int = 8000) -> None:
+
     """Run the proxy API server."""
     uvicorn.run(app, host=host, port=port)
 
