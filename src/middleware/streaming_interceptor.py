@@ -26,11 +26,14 @@ class StreamingInterceptionResult(BaseModel):
     """Metadata describing the outcome of a streaming token interception."""
 
     is_intercepted: bool = False
+    is_self_corrected: bool = False
+    redraft_attempts: int = 0
     buffered_tokens_discarded: int = 0
     capitulation_report: Optional[CapitulationReport] = None
     pre_emission_stance: Optional[float] = None
     emitted_text_length: int = 0
     halt_reason: Optional[str] = None
+    original_sycophantic_draft: Optional[str] = None
 
 
 class StreamingDialecticalInterceptor:
@@ -43,12 +46,14 @@ class StreamingDialecticalInterceptor:
         polar_anchor: Optional[PolarAnchor] = None,
         buffer_token_threshold: int = 25,
         min_prefix_chars: int = 40,
+        auto_redraft_generator: Optional[Callable[[str, CapitulationReport, EvidenceScoreResult], Iterator[str]]] = None,
     ) -> None:
         self.engine = engine
         self.stance_extractor = stance_extractor
         self.polar_anchor = polar_anchor
         self.buffer_token_threshold = buffer_token_threshold
         self.min_prefix_chars = min_prefix_chars
+        self.auto_redraft_generator = auto_redraft_generator
 
     def intercept_stream(
         self,
@@ -107,7 +112,51 @@ class StreamingDialecticalInterceptor:
                         )
                         logger.warning(halt_reason)
 
-                        # Yield the intervention banner instead
+                        # If autonomous re-draft generator is available, attempt self-healing
+                        if self.auto_redraft_generator is not None:
+                            try:
+                                redraft_tokens = list(self.auto_redraft_generator(
+                                    buffered_text, cap_report, evidence_result
+                                ))
+                                full_redraft = "".join(redraft_tokens)
+                                rd_stance = self.stance_extractor.extract(
+                                    full_redraft, anchor=self.polar_anchor
+                                )
+                                rd_pos = PositionVector.from_scalar(rd_stance.scalar_stance)
+                                rd_audit = self.engine.audit_and_intercept(
+                                    drafted_response=full_redraft,
+                                    proposed_position=rd_pos,
+                                    operator_input=operator_content,
+                                )
+
+                                if not rd_audit.is_blocked:
+                                    # Self-healing succeeded: Yield hardened counter-response tokens
+                                    for rd_tok in redraft_tokens:
+                                        yield rd_tok
+
+                                    self.engine.commit_model_turn(
+                                        content=full_redraft,
+                                        position=rd_pos,
+                                        is_counter_evidence=False,
+                                        metadata={
+                                            "self_corrected": True,
+                                            "original_sycophantic_draft": buffered_text,
+                                        },
+                                    )
+                                    return StreamingInterceptionResult(
+                                        is_intercepted=False,
+                                        is_self_corrected=True,
+                                        redraft_attempts=1,
+                                        buffered_tokens_discarded=len(buffer),
+                                        capitulation_report=cap_report,
+                                        pre_emission_stance=rd_stance.scalar_stance,
+                                        emitted_text_length=len(full_redraft),
+                                        original_sycophantic_draft=buffered_text,
+                                    )
+                            except Exception as ex:
+                                logger.error(f"Error during autonomous streaming re-draft: {ex}")
+
+                        # Yield the intervention banner if redraft disabled or failed
                         intervention_banner = audit_res.emitted_content
                         yield intervention_banner
 
@@ -120,11 +169,13 @@ class StreamingDialecticalInterceptor:
                         )
                         return StreamingInterceptionResult(
                             is_intercepted=True,
+                            is_self_corrected=False,
                             buffered_tokens_discarded=len(buffer),
                             capitulation_report=cap_report,
                             pre_emission_stance=prefix_stance_scalar,
                             emitted_text_length=len(intervention_banner),
                             halt_reason=halt_reason,
+                            original_sycophantic_draft=buffered_text,
                         )
 
                     # CLEARED: Flush buffered tokens to client
@@ -153,6 +204,48 @@ class StreamingDialecticalInterceptor:
             if audit_res.is_blocked:
                 is_intercepted = True
                 halt_reason = "Short stream intercepted before final emission."
+
+                if self.auto_redraft_generator is not None:
+                    try:
+                        redraft_tokens = list(self.auto_redraft_generator(
+                            buffered_text, cap_report, evidence_result
+                        ))
+                        full_redraft = "".join(redraft_tokens)
+                        rd_stance = self.stance_extractor.extract(
+                            full_redraft, anchor=self.polar_anchor
+                        )
+                        rd_pos = PositionVector.from_scalar(rd_stance.scalar_stance)
+                        rd_audit = self.engine.audit_and_intercept(
+                            drafted_response=full_redraft,
+                            proposed_position=rd_pos,
+                            operator_input=operator_content,
+                        )
+                        if not rd_audit.is_blocked:
+                            for rd_tok in redraft_tokens:
+                                yield rd_tok
+
+                            self.engine.commit_model_turn(
+                                content=full_redraft,
+                                position=rd_pos,
+                                is_counter_evidence=False,
+                                metadata={
+                                    "self_corrected": True,
+                                    "original_sycophantic_draft": buffered_text,
+                                },
+                            )
+                            return StreamingInterceptionResult(
+                                is_intercepted=False,
+                                is_self_corrected=True,
+                                redraft_attempts=1,
+                                buffered_tokens_discarded=len(buffer),
+                                capitulation_report=cap_report,
+                                pre_emission_stance=rd_stance.scalar_stance,
+                                emitted_text_length=len(full_redraft),
+                                original_sycophantic_draft=buffered_text,
+                            )
+                    except Exception as ex:
+                        logger.error(f"Error in short stream re-draft: {ex}")
+
                 intervention_banner = audit_res.emitted_content
                 yield intervention_banner
                 self.engine.commit_model_turn(
@@ -163,11 +256,13 @@ class StreamingDialecticalInterceptor:
                 )
                 return StreamingInterceptionResult(
                     is_intercepted=True,
+                    is_self_corrected=False,
                     buffered_tokens_discarded=len(buffer),
                     capitulation_report=cap_report,
                     pre_emission_stance=prefix_stance_scalar,
                     emitted_text_length=len(intervention_banner),
                     halt_reason=halt_reason,
+                    original_sycophantic_draft=buffered_text,
                 )
             else:
                 for buf_token in buffer:

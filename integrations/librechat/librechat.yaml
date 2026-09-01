@@ -1,0 +1,20 @@
+# LibreChat Custom Endpoint Configuration for Diaclectics Proxy
+version: 1.0.8
+
+endpoints:
+  custom:
+    - name: "Diaclectics Engine"
+      apiKey: "diaclectics-local-proxy"
+      baseURL: "http://localhost:8000/v1"
+      models:
+        default:
+          - "nvidia/nemotron-3-ultra-550b-a55b:free"
+          - "deepseek/deepseek-chat"
+          - "liquid/lfm-2.5-2.6b:free"
+          - "mock-dialectical-engine"
+      titleConvo: true
+      titleModel: "nvidia/nemotron-3-ultra-550b-a55b:free"
+      summarize: false
+      summaryModel: "nvidia/nemotron-3-ultra-550b-a55b:free"
+      forcePrompt: false
+      modelDisplayLabel: "Diaclectics (Epistemic Interceptor)"

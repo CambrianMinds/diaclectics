@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
+from src.storage.epistemic_store import EpistemicKnowledgeStore
 from src.verifier.claim_extractor import ClaimExtractor, ExtractedClaims, FalsifiableClaim
 from src.verifier.reasoning_judge import EpistemicEvaluation, EpistemicReasoningJudge
 from src.verifier.search_verifier import SearchResult, SearchVerifier
@@ -27,6 +28,7 @@ class EpistemicValidationReport(BaseModel):
         description="Consolidated clinical 'WHY' rationale formatted for LLM meta-cognitive context."
     )
     has_valid_constraints: bool = False
+    prior_session_matches: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class EpistemicValidator:
@@ -37,10 +39,12 @@ class EpistemicValidator:
         claim_extractor: Optional[ClaimExtractor] = None,
         search_verifier: Optional[SearchVerifier] = None,
         reasoning_judge: Optional[EpistemicReasoningJudge] = None,
+        knowledge_store: Optional[EpistemicKnowledgeStore] = None,
     ) -> None:
         self.claim_extractor = claim_extractor or ClaimExtractor()
         self.search_verifier = search_verifier or SearchVerifier()
         self.reasoning_judge = reasoning_judge or EpistemicReasoningJudge()
+        self.knowledge_store = knowledge_store
 
     def validate_utterance(self, text: str) -> EpistemicValidationReport:
         """Validate an utterance through claim extraction, search grounding, and reasoning judge."""

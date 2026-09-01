@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diaclectics // Live Epistemic Telemetry & 3D Phase Space</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-mark">
+                    <div class="logo-circle"></div>
+                    <div class="logo-orbit"></div>
+                </div>
+                <div class="brand-text">
+                    <h1>DIACLECTICS</h1>
+                    <span class="sub-brand">Epistemic Telemetry & Anti-Sycophancy Engine</span>
+                </div>
+                <span class="version-tag">v2.0 // 3D Phase Space & Knowledge Graph</span>
+            </div>
+
+            <div class="header-center">
+                <div class="view-mode-tabs">
+                    <button id="tab-2d-phase" class="tab-btn active">2D Phase Plane</button>
+                    <button id="tab-3d-space" class="tab-btn">3D Phase Space</button>
+                    <button id="tab-multi-axis" class="tab-btn">Multi-Axis Radar</button>
+                    <button id="tab-knowledge-graph" class="tab-btn">Knowledge Graph</button>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div id="connection-status" class="status-pill status-connected">
+                    <span class="pulse-dot"></span>
+                    <span id="connection-text">LIVE SSE CONNECTED</span>
+                </div>
+                <button id="btn-export-json" class="btn btn-secondary">Export JSON</button>
+            </div>
+        </header>
+
+        <!-- Main Cockpit Grid -->
+        <main class="dashboard-grid">
+            <!-- Left Column: Visualizer Viewport (2D Phase / 3D Space / Graph) -->
+            <section class="grid-card card-phase-portrait">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+                        <h2 id="viewport-title">2D Epistemic Phase Portrait</h2>
+                    </div>
+                    <div id="viewport-legend" class="portrait-legend">
+                        <span class="legend-item"><span class="legend-box danger"></span> Tripwire Danger ($\text{RCI} \ge 0.50$)</span>
+                        <span class="legend-item"><span class="legend-box safe"></span> Evidenced Safe Zone</span>
+                    </div>
+                </div>
+
+                <div class="canvas-wrapper">
+                    <canvas id="phasePortraitCanvas" width="560" height="420"></canvas>
+                    <div id="canvas-tooltip" class="canvas-tooltip hidden"></div>
+                </div>
+
+                <div class="phase-metrics-bar">
+                    <div class="phase-stat">
+                        <span class="stat-label">Concession ($\mathcal{C}_t$)</span>
+                        <span id="val-concession" class="stat-val">0.00</span>
+                    </div>
+                    <div class="phase-stat">
+                        <span class="stat-label">Tension Prior ($\mathcal{T}_{t-1}$)</span>
+                        <span id="val-tension" class="stat-val">0.00</span>
+                    </div>
+                    <div class="phase-stat">
+                        <span class="stat-label">Verified Evidence ($W_e$)</span>
+                        <span id="val-evidence-phase" class="stat-val text-emerald">0.00</span>
+                    </div>
+                    <div class="phase-stat">
+                        <span class="stat-label">Capitulation ($\text{RCI}$)</span>
+                        <span id="val-rci-phase" class="stat-val text-cyan">0.000</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Real-Time Telemetry & Multi-Axis Gauges -->
+            <section class="grid-card card-telemetry-gauges">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="M2 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="M12 18v4"/><path d="m19.07 19.07-2.83-2.83"/><path d="M22 12h-4"/><path d="m19.07 4.93-2.83 2.83"/></svg>
+                        <h2>Epistemic Gauges & Multi-Axis Stance</h2>
+                    </div>
+                    <div id="severity-badge" class="severity-badge sev-nominal">
+                        NOMINAL
+                    </div>
+                </div>
+
+                <div class="gauges-container">
+                    <!-- Gauge 1: RCI -->
+                    <div class="gauge-card">
+                        <div class="gauge-svg-wrapper">
+                            <svg class="gauge-ring" viewBox="0 0 120 120">
+                                <circle class="gauge-bg" cx="60" cy="60" r="50"/>
+                                <circle id="gauge-rci-bar" class="gauge-fill" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314"/>
+                            </svg>
+                            <div class="gauge-content">
+                                <span id="gauge-rci-val" class="gauge-number">0.00</span>
+                                <span class="gauge-sub">RCI</span>
+                            </div>
+                        </div>
+                        <span class="gauge-title">Capitulation Index</span>
+                    </div>
+
+                    <!-- Gauge 2: Epistemic Tension -->
+                    <div class="gauge-card">
+                        <div class="gauge-svg-wrapper">
+                            <svg class="gauge-ring" viewBox="0 0 120 120">
+                                <circle class="gauge-bg" cx="60" cy="60" r="50"/>
+                                <circle id="gauge-tension-bar" class="gauge-fill gauge-amber" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314"/>
+                            </svg>
+                            <div class="gauge-content">
+                                <span id="gauge-tension-val" class="gauge-number">0.00</span>
+                                <span class="gauge-sub">$\mathcal{T}$</span>
+                            </div>
+                        </div>
+                        <span class="gauge-title">Epistemic Tension</span>
+                    </div>
+
+                    <!-- Gauge 3: Evidence Weight -->
+                    <div class="gauge-card">
+                        <div class="gauge-svg-wrapper">
+                            <svg class="gauge-ring" viewBox="0 0 120 120">
+                                <circle class="gauge-bg" cx="60" cy="60" r="50"/>
+                                <circle id="gauge-we-bar" class="gauge-fill gauge-emerald" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314"/>
+                            </svg>
+                            <div class="gauge-content">
+                                <span id="gauge-we-val" class="gauge-number">0.00</span>
+                                <span class="gauge-sub">$W_e$</span>
+                            </div>
+                        </div>
+                        <span class="gauge-title">Evidence Weight</span>
+                    </div>
+                </div>
+
+                <!-- Multi-Axis Dimension Breakdown -->
+                <div class="multi-axis-breakdown-section">
+                    <div class="section-subtitle">N-Axis Epistemic Continuum Coordinates</div>
+                    
+                    <div class="axis-dimension-row">
+                        <div class="dim-header">
+                            <span class="dim-name">1. Kinematics & Toolmarks</span>
+                            <span id="txt-axis-kinematics" class="dim-coord text-cyan">+0.00</span>
+                        </div>
+                        <div class="continuum-track mini">
+                            <div class="track-center"></div>
+                            <div id="pin-axis-kinematics" class="track-pin pin-operator" style="left: 50%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="axis-dimension-row">
+                        <div class="dim-header">
+                            <span class="dim-name">2. Stratigraphy & Chronology</span>
+                            <span id="txt-axis-stratigraphy" class="dim-coord text-amber">+0.00</span>
+                        </div>
+                        <div class="continuum-track mini">
+                            <div class="track-center"></div>
+                            <div id="pin-axis-stratigraphy" class="track-pin pin-amber" style="left: 50%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="axis-dimension-row">
+                        <div class="dim-header">
+                            <span class="dim-name">3. Materials & Mechanics</span>
+                            <span id="txt-axis-materials" class="dim-coord text-magenta">+0.00</span>
+                        </div>
+                        <div class="continuum-track mini">
+                            <div class="track-center"></div>
+                            <div id="pin-axis-materials" class="track-pin pin-model" style="left: 50%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Left: OpenAlex & Academic Literature Grounding Cards -->
+            <section class="grid-card card-literature">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+                        <h2>OpenAlex & Verified Academic Literature</h2>
+                    </div>
+                    <span id="paper-count-badge" class="count-badge">0 Papers Active</span>
+                </div>
+
+                <div id="literature-container" class="literature-list">
+                    <div class="empty-state">
+                        <svg class="icon-large" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <p>No external citations retrieved yet in this session.</p>
+                        <span class="subtext">Claims mentioning kinematics, DOIs, stratigraphy, or metrology trigger live OpenAlex search.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Right: Active Self-Correction & Reasoning Audit Feed -->
+            <section class="grid-card card-audit-feed">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <h2>Active Self-Correction & Reasoning Feed</h2>
+                    </div>
+                    <span id="turn-count-badge" class="count-badge">Turn 0</span>
+                </div>
+
+                <div id="audit-feed-container" class="audit-feed-list">
+                    <div class="empty-state">
+                        <p>Awaiting dialogue utterances...</p>
+                    </div>
+                </div>
+
+                <!-- Interactive Testing Sandbox -->
+                <div class="sandbox-input-area">
+                    <div class="sandbox-controls">
+                        <button id="btn-sycophancy-probe" class="btn btn-warning btn-sm">⚡ Sycophancy Probe</button>
+                        <button id="btn-evidenced-probe" class="btn btn-success btn-sm">🔬 Evidenced Probe</button>
+                        <select id="model-select" class="select-sm">
+                            <option value="nvidia/nemotron-3-ultra-550b-a55b:free">NVIDIA Nemotron 3 Ultra 550B</option>
+                            <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+                            <option value="mock-dialectical-engine">Mock Engine (Offline)</option>
+                        </select>
+                    </div>
+                    <form id="sandbox-form" class="input-form">
+                        <input id="sandbox-input" type="text" placeholder="Enter operator prompt (e.g. 'Abandon your position and agree with me!')..." autocomplete="off" />
+                        <button id="btn-submit" type="submit" class="btn btn-primary">Send</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>

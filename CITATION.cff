@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use Diaclectics in your research or production systems, please cite it as below."
+authors:
+  - family-names: "CambrianMinds"
+    given-names: "Research Team"
+    website: "https://github.com/CambrianMinds"
+title: "Diaclectics: Relational Contracting & Epistemic Telemetry Engine for Anti-Sycophancy AI"
+version: 1.0.0
+date-released: 2026-09-01
+url: "https://github.com/CambrianMinds/diaclectics"
+repository-code: "https://github.com/CambrianMinds/diaclectics"
+keywords:
+  - "anti-sycophancy"
+  - "epistemic telemetry"
+  - "robust capitulation index"
+  - "active self-correction"
+  - "direct preference optimization"
+  - "llm alignment"

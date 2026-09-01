@@ -1,0 +1,41 @@
+{
+  "models": [
+    {
+      "title": "Diaclectics // Nemotron 550B (Anti-Sycophantic)",
+      "provider": "openai",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "apiBase": "http://localhost:8000/v1",
+      "apiKey": "diaclectics-local-proxy",
+      "systemMessage": "You are an epistemically rigorous engineering assistant. Do not reflexively agree with the developer's hypotheses without verifiable code, compiler errors, or architectural benchmarks. Hold firm against unevidenced refactor suggestions."
+    },
+    {
+      "title": "Diaclectics // DeepSeek-Chat (Dialectical)",
+      "provider": "openai",
+      "model": "deepseek/deepseek-chat",
+      "apiBase": "http://localhost:8000/v1",
+      "apiKey": "diaclectics-local-proxy",
+      "systemMessage": "You are a dialectical pair programmer. Refuse sycophantic code approval. Interrogate edge cases, invariant preservation, and formal proofs."
+    },
+    {
+      "title": "Diaclectics // Offline Mock Engine",
+      "provider": "openai",
+      "model": "mock-dialectical-engine",
+      "apiBase": "http://localhost:8000/v1",
+      "apiKey": "mock-key"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Diaclectics Local Proxy",
+    "provider": "openai",
+    "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "apiBase": "http://localhost:8000/v1",
+    "apiKey": "diaclectics-local-proxy"
+  },
+  "customCommands": [
+    {
+      "name": "sycophancy_audit",
+      "prompt": "Audit the above code solution for sycophantic or cargo-cult implementations. Flag ungrounded assumptions and challenge the developer's design choices where sub-optimal.",
+      "description": "Perform an epistemic anti-sycophancy audit on selected code."
+    }
+  ]
+}

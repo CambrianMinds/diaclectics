@@ -45,6 +45,10 @@ coverage.xml
 .hypothesis/
 htmlcov/
 
+# Local Data & Private Transcripts
+data/parsed/
+reports/
+
 # IDE & OS files
 .idea/
 .vscode/
@@ -53,3 +57,4 @@ htmlcov/
 *~
 .DS_Store
 Thumbs.db
+

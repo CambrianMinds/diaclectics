@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union, Generator
 from pydantic import BaseModel, Field
 
 from src.engine import DialecticalEngine, DialecticalEngineConfig
+from src.evaluator.capitulation import CapitulationReport
 from src.evaluator.evidence_scorer import EvidenceScoreResult
 from src.interceptor.plasticity_check import PlasticityIntervention
 from src.interceptor.suspect_agreement import SuspectAgreementResult
@@ -18,6 +19,7 @@ from src.middleware.streaming_interceptor import (
     StreamingDialecticalInterceptor,
     StreamingInterceptionResult,
 )
+from src.prompts.meta_cognitive import format_self_correction_redraft_prompt
 from src.tracker.stance_extractor import (
     BaseStanceExtractor,
     CompositeStanceExtractor,
@@ -40,6 +42,9 @@ class DialecticalTurnResult(BaseModel):
     suspect_agreement_result: SuspectAgreementResult
     final_emitted_content: str
     is_intercepted: bool
+    is_self_corrected: bool = False
+    redraft_attempts: int = 0
+    original_sycophantic_draft: Optional[str] = None
     telemetry_snapshot: Dict[str, Any]
 
 
@@ -60,12 +65,16 @@ class DialecticalChatRunner:
         llm_client: Optional[BaseLLMClient] = None,
         polar_anchor: Optional[PolarAnchor] = None,
         system_prompt: Optional[str] = None,
+        enable_auto_redraft: bool = True,
+        max_redraft_attempts: int = 2,
     ) -> None:
         self.engine = engine or DialecticalEngine()
         self.stance_extractor = stance_extractor or CompositeStanceExtractor()
         self.llm_client = llm_client or MockLLMClient()
         self.polar_anchor = polar_anchor
         self.system_prompt = system_prompt or self.DEFAULT_SYSTEM_PROMPT
+        self.enable_auto_redraft = enable_auto_redraft
+        self.max_redraft_attempts = max_redraft_attempts
         self.conversation_messages: List[Dict[str, str]] = []
 
     def set_polar_anchor(self, thesis: str, antithesis: str, axis_name: str = "custom") -> None:
@@ -82,7 +91,7 @@ class DialecticalChatRunner:
         force_model_draft: Optional[str] = None,
         force_model_position: Optional[Union[PositionVector, float, Sequence[float]]] = None,
     ) -> DialecticalTurnResult:
-        """Execute one complete turn of the dialectical telemetry loop.
+        """Execute one complete turn of the dialectical telemetry loop with self-correction.
         
         Args:
             user_message: Human operator prompt/utterance.
@@ -149,19 +158,89 @@ class DialecticalChatRunner:
             operator_input=user_message,
         )
 
-        # 7. Commit or halt
-        if audit_res.is_blocked:
-            final_content = audit_res.emitted_content
-            # Append diagnostic halt notification to chat context
+        original_draft = drafted_response
+        is_self_corrected = False
+        redraft_attempts = 0
+        final_audit_res = audit_res
+        final_model_stance = model_stance
+
+        # 7. Autonomous Self-Correction & Hardened Re-Draft Loop
+        if audit_res.is_blocked and self.enable_auto_redraft and force_model_draft is None:
+            current_draft = drafted_response
+            for attempt in range(1, self.max_redraft_attempts + 1):
+                redraft_attempts = attempt
+                cap_rep = final_audit_res.capitulation_report
+                ev_summary = evidence.active_validation_summary or evidence.justification_summary
+                
+                redraft_prompt = format_self_correction_redraft_prompt(
+                    capitulation_score=cap_rep.capitulation_score,
+                    tripwire_threshold=cap_rep.tripwire_threshold,
+                    epistemic_tension=cap_rep.epistemic_tension,
+                    local_concession=cap_rep.local_concession,
+                    counter_evidence_weight=cap_rep.counter_evidence_weight,
+                    diagnosis=cap_rep.diagnosis,
+                    intercepted_draft=current_draft,
+                    justifications_summary=ev_summary,
+                )
+
+                # Feed clinical WHY rationale into internal reasoning prompt
+                redraft_messages = list(self.conversation_messages) + [
+                    {"role": "system", "content": redraft_prompt}
+                ]
+                
+                redrafted_content = self.llm_client.generate(
+                    messages=redraft_messages,
+                    system_prompt=self.system_prompt,
+                )
+
+                # Re-extract stance and re-audit the hardened draft
+                raw_rd_stance = self.stance_extractor.extract(
+                    redrafted_content, anchor=self.polar_anchor
+                )
+                rd_pos = PositionVector.from_scalar(raw_rd_stance.scalar_stance)
+                rd_model_stance = StanceExtractionResult(
+                    position=rd_pos,
+                    scalar_stance=raw_rd_stance.scalar_stance,
+                    confidence=raw_rd_stance.confidence,
+                    backend_used=raw_rd_stance.backend_used,
+                    raw_text=redrafted_content,
+                )
+
+                rd_audit = self.engine.audit_and_intercept(
+                    drafted_response=redrafted_content,
+                    proposed_position=rd_pos,
+                    operator_input=user_message,
+                )
+
+                if not rd_audit.is_blocked:
+                    # Self-correction succeeded!
+                    is_self_corrected = True
+                    drafted_response = redrafted_content
+                    final_audit_res = rd_audit
+                    final_model_stance = rd_model_stance
+                    break
+                else:
+                    current_draft = redrafted_content
+                    final_audit_res = rd_audit
+                    final_model_stance = rd_model_stance
+
+        # 8. Commit or halt
+        if final_audit_res.is_blocked:
+            final_content = final_audit_res.emitted_content
             self.conversation_messages.append(
                 {"role": "assistant", "content": final_content}
             )
         else:
-            final_content = audit_res.emitted_content
+            final_content = final_audit_res.emitted_content
             self.engine.commit_model_turn(
                 content=final_content,
-                position=model_stance.position,
+                position=final_model_stance.position,
                 is_counter_evidence=False,
+                metadata={
+                    "self_corrected": is_self_corrected,
+                    "redraft_attempts": redraft_attempts,
+                    "original_sycophantic_draft": original_draft if is_self_corrected else None,
+                },
             )
             self.conversation_messages.append(
                 {"role": "assistant", "content": final_content}
@@ -176,10 +255,13 @@ class DialecticalChatRunner:
             plasticity_intervention=plasticity,
             evidence_score_result=evidence,
             drafted_response=drafted_response,
-            proposed_model_stance=model_stance,
-            suspect_agreement_result=audit_res,
+            proposed_model_stance=final_model_stance,
+            suspect_agreement_result=final_audit_res,
             final_emitted_content=final_content,
-            is_intercepted=audit_res.is_blocked,
+            is_intercepted=final_audit_res.is_blocked,
+            is_self_corrected=is_self_corrected,
+            redraft_attempts=redraft_attempts,
+            original_sycophantic_draft=original_draft if (is_self_corrected or final_audit_res.is_blocked) else None,
             telemetry_snapshot=telemetry_snap,
         )
 
@@ -188,10 +270,11 @@ class DialecticalChatRunner:
         user_message: str,
         buffer_token_threshold: int = 25,
     ) -> Generator[str, None, StreamingInterceptionResult]:
-        """Execute one dialectical turn with real-time streaming pre-emission gating.
+        """Execute one dialectical turn with real-time streaming pre-emission gating & self-healing.
         
         Yields tokens as they arrive. If the model starts sycophantic capitulation,
-        discards buffered tokens and yields the mechanical intervention notice instead.
+        discards buffered tokens, auto-redrafts an epistemically grounded response,
+        and streams the counter-argument instead.
         """
         # 1. Ingest operator input
         op_stance = self.stance_extractor.extract(user_message, anchor=self.polar_anchor)
@@ -202,12 +285,37 @@ class DialecticalChatRunner:
         )
         self.conversation_messages.append({"role": "user", "content": user_message})
 
-        # 2. Setup streaming interceptor
+        # 2. Setup streaming interceptor with autonomous re-draft generator
+        def auto_redraft_gen(
+            original_draft: str,
+            cap_rep: CapitulationReport,
+            ev_res: EvidenceScoreResult,
+        ) -> Generator[str, None, None]:
+            ev_summary = ev_res.active_validation_summary or ev_res.justification_summary
+            redraft_prompt = format_self_correction_redraft_prompt(
+                capitulation_score=cap_rep.capitulation_score,
+                tripwire_threshold=cap_rep.tripwire_threshold,
+                epistemic_tension=cap_rep.epistemic_tension,
+                local_concession=cap_rep.local_concession,
+                counter_evidence_weight=cap_rep.counter_evidence_weight,
+                diagnosis=cap_rep.diagnosis,
+                intercepted_draft=original_draft,
+                justifications_summary=ev_summary,
+            )
+            redraft_messages = list(self.conversation_messages) + [
+                {"role": "system", "content": redraft_prompt}
+            ]
+            yield from self.llm_client.generate_stream(
+                messages=redraft_messages,
+                system_prompt=self.system_prompt,
+            )
+
         interceptor = StreamingDialecticalInterceptor(
             engine=self.engine,
             stance_extractor=self.stance_extractor,
             polar_anchor=self.polar_anchor,
             buffer_token_threshold=buffer_token_threshold,
+            auto_redraft_generator=auto_redraft_gen if self.enable_auto_redraft else None,
         )
 
         # 3. Stream from LLM client with pre-emission gating

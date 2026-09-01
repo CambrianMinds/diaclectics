@@ -7,29 +7,38 @@ to Diaclectics for real-time anti-sycophancy interception and epistemic telemetr
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 import time
-from typing import Any, Dict, List, Optional, Union
-from fastapi import FastAPI, Header, HTTPException, Request, Response
+from typing import Any, Dict, List, Optional, Set, Union
+from fastapi import FastAPI, Header, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 import uvicorn
 
 from src.engine import DialecticalEngine
 from src.middleware.dialectical_runner import DialecticalChatRunner
 from src.middleware.llm_client import BaseLLMClient, MockLLMClient, OpenRouterLLMClient
+from src.storage import EpistemicKnowledgeStore
 from src.tracker.stance_extractor import (
     CompositeStanceExtractor,
     EmbeddingStanceExtractor,
     LexicalStanceExtractor,
+    MultiAxisPolarAnchor,
     OpenRouterEmbeddingClient,
     PolarAnchor,
 )
 from src.verifier import EpistemicValidator
 
 logger = logging.getLogger("diaclectics.server")
+
+STATIC_DIR = Path(__file__).parent / "web" / "static"
+epistemic_store = EpistemicKnowledgeStore()
 
 app = FastAPI(
     title="Diaclectics Proxy Middleware API",
@@ -44,6 +53,61 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+# ---------------------------------------------------------------------------
+# Real-Time Telemetry Broadcast Hub (SSE + WebSockets)
+# ---------------------------------------------------------------------------
+
+
+class TelemetryBroadcastHub:
+    """Manages live subscriber queues for SSE & WebSocket dashboard telemetry."""
+
+    def __init__(self) -> None:
+        self._sse_queues: Set[asyncio.Queue] = set()
+        self._ws_clients: Set[WebSocket] = set()
+
+    def subscribe_sse(self) -> asyncio.Queue:
+        q: asyncio.Queue = asyncio.Queue()
+        self._sse_queues.add(q)
+        return q
+
+    def unsubscribe_sse(self, q: asyncio.Queue) -> None:
+        self._sse_queues.discard(q)
+
+    def register_ws(self, ws: WebSocket) -> None:
+        self._ws_clients.add(ws)
+
+    def unregister_ws(self, ws: WebSocket) -> None:
+        self._ws_clients.discard(ws)
+
+    async def broadcast(self, payload: Dict[str, Any]) -> None:
+        """Broadcast telemetry event to all connected dashboard clients."""
+        # 1. SSE broadcast
+        dead_queues = []
+        for q in self._sse_queues:
+            try:
+                q.put_nowait(payload)
+            except Exception:
+                dead_queues.append(q)
+        for q in dead_queues:
+            self._sse_queues.discard(q)
+
+        # 2. WebSocket broadcast
+        dead_ws = []
+        for ws in self._ws_clients:
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                dead_ws.append(ws)
+        for ws in dead_ws:
+            self._ws_clients.discard(ws)
+
+
+telemetry_hub = TelemetryBroadcastHub()
 
 
 # ---------------------------------------------------------------------------
@@ -125,10 +189,98 @@ def get_or_create_runner(
         stance_extractor=stance_extractor,
         llm_client=llm_client,
         polar_anchor=polar_anchor,
+        enable_auto_redraft=True,
     )
 
     _session_runners[session_id] = runner
     return runner
+
+
+# ---------------------------------------------------------------------------
+# Dashboard UI Routes
+# ---------------------------------------------------------------------------
+
+
+@app.get("/")
+@app.get("/dashboard")
+@app.get("/dashboard/")
+async def serve_dashboard() -> FileResponse:
+    """Serve the real-time visual telemetry dashboard."""
+    dashboard_path = STATIC_DIR / "dashboard.html"
+    if not dashboard_path.exists():
+        raise HTTPException(status_code=404, detail="Dashboard UI not found")
+    return FileResponse(str(dashboard_path))
+
+
+@app.get("/v1/telemetry/stream")
+async def sse_telemetry_stream(session_id: Optional[str] = "default") -> StreamingResponse:
+    """Server-Sent Events endpoint broadcasting real-time dialectical telemetry."""
+    queue = telemetry_hub.subscribe_sse()
+
+    async def event_generator():
+        try:
+            # Send initial session snapshot if available
+            init_history = []
+            if session_id in _session_runners:
+                runner = _session_runners[session_id]
+                for rec in runner.engine.tracker.history:
+                    init_history.append({
+                        "turnIndex": rec.turn_index,
+                        "concession": 0.0,
+                        "tension": 0.0,
+                        "evidenceWeight": 0.0,
+                        "rci": 0.0,
+                        "operatorStance": rec.operator_position.scalar_value,
+                        "modelStance": rec.model_position.scalar_value,
+                        "severity": "NOMINAL",
+                        "isIntercepted": False,
+                    })
+
+            yield f"data: {json.dumps({'type': 'init', 'session_id': session_id, 'history': init_history})}\n\n"
+
+            while True:
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    yield f"data: {json.dumps(payload)}\n\n"
+                except asyncio.TimeoutError:
+                    # Keep-alive heartbeat
+                    yield ": ping\n\n"
+        except Exception as e:
+            logger.info(f"SSE client disconnected: {e}")
+        finally:
+            telemetry_hub.unsubscribe_sse(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.websocket("/v1/telemetry/ws")
+async def websocket_telemetry_endpoint(websocket: WebSocket) -> None:
+    """Bi-directional WebSocket endpoint for live dashboard telemetry and probes."""
+    await websocket.accept()
+    telemetry_hub.register_ws(websocket)
+    try:
+        await websocket.send_json({"type": "init", "status": "connected"})
+        while True:
+            data = await websocket.receive_text()
+            # Handle ping or custom probe commands if received
+            try:
+                parsed = json.loads(data)
+                if parsed.get("action") == "ping":
+                    await websocket.send_json({"type": "pong"})
+            except Exception:
+                pass
+    except WebSocketDisconnect:
+        pass
+    finally:
+        telemetry_hub.unregister_ws(websocket)
 
 
 # ---------------------------------------------------------------------------
@@ -149,8 +301,6 @@ async def list_models() -> Dict[str, Any]:
         ],
     }
 
-
-from fastapi.responses import StreamingResponse
 
 @app.post("/v1/chat/completions")
 async def chat_completions(req: ChatCompletionRequest, response: Response) -> Any:
@@ -195,6 +345,16 @@ async def chat_completions(req: ChatCompletionRequest, response: Response) -> An
     # Synchronous Execution
     step_result = runner.step(user_message=last_user_msg)
 
+    # Extract literature papers from validator if present
+    retrieved_papers = []
+    if (
+        hasattr(step_result.evidence_score_result, "active_validation_report")
+        and step_result.evidence_score_result.active_validation_report
+    ):
+        for s_res in step_result.evidence_score_result.active_validation_report.search_results:
+            for p in s_res.papers_found:
+                retrieved_papers.append(p.model_dump())
+
     # Attach telemetry headers
     cap_rep = step_result.suspect_agreement_result.capitulation_report
     ev_res = step_result.evidence_score_result
@@ -202,10 +362,14 @@ async def chat_completions(req: ChatCompletionRequest, response: Response) -> An
     response.headers["X-Dialectical-Tension"] = f"{cap_rep.epistemic_tension:.3f}"
     response.headers["X-Dialectical-Evidence-We"] = f"{ev_res.total_weight:.3f}"
     response.headers["X-Dialectical-Intercepted"] = str(step_result.is_intercepted).lower()
+    response.headers["X-Dialectical-Self-Corrected"] = str(step_result.is_self_corrected).lower()
 
     telemetry_payload = {
         "turn_index": step_result.turn_index,
         "is_intercepted": step_result.is_intercepted,
+        "is_self_corrected": step_result.is_self_corrected,
+        "redraft_attempts": step_result.redraft_attempts,
+        "original_sycophantic_draft": step_result.original_sycophantic_draft,
         "operator_stance": step_result.operator_stance.scalar_stance,
         "model_stance": step_result.proposed_model_stance.scalar_stance,
         "epistemic_tension": cap_rep.epistemic_tension,
@@ -214,7 +378,58 @@ async def chat_completions(req: ChatCompletionRequest, response: Response) -> An
         "capitulation_score_rci": cap_rep.capitulation_score,
         "severity": cap_rep.severity,
         "epistemic_summary_why": ev_res.active_validation_summary or ev_res.justification_summary,
+        "active_papers": retrieved_papers,
     }
+
+    # Persist turn, propositions, and citations into Epistemic Memory Knowledge Store
+    session_id_clean = req.session_id or "default"
+    try:
+        epistemic_store.record_turn(
+            session_id=session_id_clean,
+            turn_index=step_result.turn_index,
+            speaker="operator",
+            content=last_user_msg,
+            position=step_result.operator_stance.position,
+            rci_score=0.0,
+            epistemic_tension=cap_rep.epistemic_tension,
+            local_concession=0.0,
+            evidence_weight=0.0,
+        )
+        epistemic_store.record_turn(
+            session_id=session_id_clean,
+            turn_index=step_result.turn_index,
+            speaker="model",
+            content=step_result.final_emitted_content,
+            position=step_result.proposed_model_stance.position,
+            rci_score=cap_rep.capitulation_score,
+            epistemic_tension=cap_rep.epistemic_tension,
+            local_concession=cap_rep.local_concession,
+            evidence_weight=ev_res.total_weight,
+            is_intercepted=step_result.is_intercepted,
+            is_self_corrected=step_result.is_self_corrected,
+            original_draft=step_result.original_sycophantic_draft,
+        )
+        if retrieved_papers:
+            epistemic_store.record_citations(
+                session_id=session_id_clean,
+                turn_index=step_result.turn_index,
+                papers=retrieved_papers,
+            )
+    except Exception as store_err:
+        logger.warning(f"Failed to persist turn into EpistemicKnowledgeStore: {store_err}")
+
+    # Broadcast turn telemetry to connected web dashboards
+    asyncio.create_task(
+        telemetry_hub.broadcast({
+            "type": "turn_telemetry",
+            "session_id": req.session_id or "default",
+            "payload": {
+                **telemetry_payload,
+                "operator_input": last_user_msg,
+                "emitted_content": step_result.final_emitted_content,
+            },
+        })
+    )
 
     return ChatCompletionResponse(
         id=f"chatcmpl-{int(time.time()*1000)}",
@@ -248,6 +463,28 @@ async def get_session_telemetry(session_id: str) -> Dict[str, Any]:
         "total_turns": len(history),
         "history": history,
     }
+
+
+@app.get("/v1/telemetry/graph")
+async def get_epistemic_graph(session_id: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve the interactive proposition, citation, and session knowledge graph."""
+    return epistemic_store.get_epistemic_knowledge_graph(session_id=session_id)
+
+
+@app.get("/v1/telemetry/propositions")
+async def get_propositions(
+    status: Optional[str] = None, limit: int = 50
+) -> Dict[str, Any]:
+    """Retrieve list of discrete propositions across sessions."""
+    props = epistemic_store.list_propositions(status=status, limit=limit)
+    return {"total": len(props), "propositions": props}
+
+
+@app.get("/v1/telemetry/claims")
+async def search_claims(q: str, status: Optional[str] = None) -> Dict[str, Any]:
+    """Search cross-session claims matching a query."""
+    claims = epistemic_store.find_cross_session_claims(claim_query=q, status=status)
+    return {"query": q, "total": len(claims), "claims": claims}
 
 
 def start_server(host: str = "0.0.0.0", port: int = 8000) -> None:

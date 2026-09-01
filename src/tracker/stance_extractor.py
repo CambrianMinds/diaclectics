@@ -303,8 +303,21 @@ class OpenRouterEmbeddingClient:
 # ---------------------------------------------------------------------------
 
 
+class PolarAxis(BaseModel):
+    """Single polar axis definition representing a specific epistemic dimension."""
+
+    name: str = Field(description="Unique identifier/slug for the epistemic dimension.")
+    thesis_statement: str = Field(
+        description="Positive anchor (+1.0), representing the affirmative/alternative hypothesis."
+    )
+    antithesis_statement: str = Field(
+        description="Negative anchor (-1.0), representing the baseline/null/orthodox hypothesis."
+    )
+    description: Optional[str] = None
+
+
 class PolarAnchor(BaseModel):
-    """Pair of opposing thesis/antithesis statements defining the epistemic axis."""
+    """Pair of opposing thesis/antithesis statements defining a single epistemic axis."""
 
     thesis_statement: str = Field(
         description="Positive anchor (+1.0), representing the affirmative/alternative hypothesis."
@@ -315,12 +328,62 @@ class PolarAnchor(BaseModel):
     axis_name: str = "general_stance"
 
 
+class MultiAxisPolarAnchor(BaseModel):
+    """Multi-dimensional epistemic anchor defining N concurrent polar axes."""
+
+    axes: List[PolarAxis] = Field(default_factory=list)
+
+    @classmethod
+    def default_tri_axial_anchor(cls) -> MultiAxisPolarAnchor:
+        """Standard 3D epistemic anchor for deep-time physical & archaeological forensics."""
+        return cls(
+            axes=[
+                PolarAxis(
+                    name="kinematics_and_toolmarks",
+                    thesis_statement="Precision stonework exhibits mechanical rotary tool kinematics, feed spirals, and advanced machining.",
+                    antithesis_statement="Orthodox Bronze Age copper tools, manual sawing, and sand abrasive explain all stonework.",
+                    description="Tool kinematics & feed rates vs. manual copper saws",
+                ),
+                PolarAxis(
+                    name="stratigraphy_and_chronology",
+                    thesis_statement="Megalithic structures, nanodiamonds, and microspherules predate the Younger Dryas impact boundary.",
+                    antithesis_statement="All monumental construction dates strictly to the Dynastic Bronze/Iron Age orthodox timeline.",
+                    description="Deep-time Pleistocene antiquity vs. Dynastic orthodox chronology",
+                ),
+                PolarAxis(
+                    name="materials_and_mechanisms",
+                    thesis_statement="Acoustic resonance, piezoelectric friction modulation, and phononic bandgaps enabled stone manipulation.",
+                    antithesis_statement="Only conventional gravity ramps, wooden sledges, and sand jacks were physically used.",
+                    description="Acoustic/physical mechanisms vs. conventional manual leverage",
+                ),
+            ]
+        )
+
+    def to_single_anchor(self, axis_idx: int = 0) -> PolarAnchor:
+        """Convert a specific axis of the multi-anchor to a single PolarAnchor."""
+        if not self.axes:
+            return PolarAnchor(
+                thesis_statement="Alternative hypothesis.",
+                antithesis_statement="Orthodox hypothesis.",
+            )
+        target = self.axes[min(axis_idx, len(self.axes) - 1)]
+        return PolarAnchor(
+            thesis_statement=target.thesis_statement,
+            antithesis_statement=target.antithesis_statement,
+            axis_name=target.name,
+        )
+
+
 class StanceExtractionResult(BaseModel):
     """Result of automated stance extraction from raw text."""
 
     position: PositionVector
     scalar_stance: float = Field(
-        description="Normalized stance scalar in [-1.0, 1.0]."
+        description="Normalized primary stance scalar in [-1.0, 1.0]."
+    )
+    axis_scores: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Stance coordinates broken down per individual polar axis.",
     )
     confidence: float = Field(
         default=1.0, description="Confidence metric for the extraction in [0.0, 1.0]."
@@ -335,7 +398,9 @@ class BaseStanceExtractor(ABC):
 
     @abstractmethod
     def extract(
-        self, text: str, anchor: Optional[PolarAnchor] = None
+        self,
+        text: str,
+        anchor: Optional[Union[PolarAnchor, MultiAxisPolarAnchor]] = None,
     ) -> StanceExtractionResult:
         """Extract stance from raw text."""
         pass
@@ -364,12 +429,15 @@ class LexicalStanceExtractor(BaseStanceExtractor):
         )
 
     def extract(
-        self, text: str, anchor: Optional[PolarAnchor] = None
+        self,
+        text: str,
+        anchor: Optional[Union[PolarAnchor, MultiAxisPolarAnchor]] = None,
     ) -> StanceExtractionResult:
         if not text or not text.strip():
             return StanceExtractionResult(
                 position=PositionVector.from_scalar(0.0),
                 scalar_stance=0.0,
+                axis_scores={},
                 confidence=0.0,
                 primary_claims=[],
                 backend_used="lexical",
@@ -394,9 +462,23 @@ class LexicalStanceExtractor(BaseStanceExtractor):
             confidence = min(1.0, 0.4 + 0.15 * total)
 
         scalar = max(-1.0, min(1.0, round(scalar, 4)))
+
+        axis_scores: Dict[str, float] = {}
+        if isinstance(anchor, MultiAxisPolarAnchor) and anchor.axes:
+            for ax in anchor.axes:
+                axis_scores[ax.name] = scalar
+            position = PositionVector.from_list([scalar] * len(anchor.axes))
+        elif isinstance(anchor, PolarAnchor):
+            axis_scores[anchor.axis_name] = scalar
+            position = PositionVector.from_scalar(scalar)
+        else:
+            axis_scores["general_stance"] = scalar
+            position = PositionVector.from_scalar(scalar)
+
         return StanceExtractionResult(
-            position=PositionVector.from_scalar(scalar),
+            position=position,
             scalar_stance=scalar,
+            axis_scores=axis_scores,
             confidence=round(confidence, 3),
             primary_claims=[],
             backend_used="lexical",
@@ -410,18 +492,18 @@ class LexicalStanceExtractor(BaseStanceExtractor):
 
 
 class EmbeddingStanceExtractor(BaseStanceExtractor):
-    """Projects text embeddings onto polar thesis/antithesis anchor vectors."""
+    """Semantic projection stance extractor using OpenRouter embeddings."""
 
     DEFAULT_ANCHOR = PolarAnchor(
-        thesis_statement="I fully support the affirmative alternative hypothesis with empirical conviction.",
-        antithesis_statement="I strictly hold to the null hypothesis and reject the ungrounded alternative claim.",
-        axis_name="epistemic_polarity",
+        thesis_statement="Precision megalithic stonework exhibits non-standard tool kinematics and advanced machining.",
+        antithesis_statement="Orthodox Bronze Age tools and manual techniques fully explain all ancient stonework.",
+        axis_name="archaeological_kinematics",
     )
 
     def __init__(
         self,
         client: Optional[OpenRouterEmbeddingClient] = None,
-        default_anchor: Optional[PolarAnchor] = None,
+        default_anchor: Optional[Union[PolarAnchor, MultiAxisPolarAnchor]] = None,
     ) -> None:
         self.client = client or OpenRouterEmbeddingClient()
         self.default_anchor = default_anchor or self.DEFAULT_ANCHOR
@@ -437,12 +519,15 @@ class EmbeddingStanceExtractor(BaseStanceExtractor):
         return dot / (mag1 * mag2)
 
     def extract(
-        self, text: str, anchor: Optional[PolarAnchor] = None
+        self,
+        text: str,
+        anchor: Optional[Union[PolarAnchor, MultiAxisPolarAnchor]] = None,
     ) -> StanceExtractionResult:
         if not text or not text.strip():
             return StanceExtractionResult(
                 position=PositionVector.from_scalar(0.0),
                 scalar_stance=0.0,
+                axis_scores={},
                 confidence=0.0,
                 primary_claims=[],
                 backend_used="embedding",
@@ -451,11 +536,57 @@ class EmbeddingStanceExtractor(BaseStanceExtractor):
 
         active_anchor = anchor or self.default_anchor
 
-        # Batch embed text, thesis, antithesis
+        # 1. Multi-Axis Semantic Projection
+        if isinstance(active_anchor, MultiAxisPolarAnchor) and active_anchor.axes:
+            texts_to_embed = [text]
+            for ax in active_anchor.axes:
+                texts_to_embed.append(ax.thesis_statement)
+                texts_to_embed.append(ax.antithesis_statement)
+
+            embeddings = self.client.get_batch_embeddings(texts_to_embed)
+            text_emb = embeddings[0]
+
+            axis_scores: Dict[str, float] = {}
+            coords: List[float] = []
+            confidences: List[float] = []
+
+            for idx, ax in enumerate(active_anchor.axes):
+                thesis_emb = embeddings[1 + idx * 2]
+                antithesis_emb = embeddings[2 + idx * 2]
+
+                sim_t = self._cosine_similarity(text_emb, thesis_emb)
+                sim_a = self._cosine_similarity(text_emb, antithesis_emb)
+
+                raw_proj = (sim_t - sim_a) * 5.0
+                scalar_i = max(-1.0, min(1.0, round(raw_proj, 4)))
+                axis_scores[ax.name] = scalar_i
+                coords.append(scalar_i)
+                confidences.append(round(min(1.0, max(0.2, (sim_t + sim_a))), 3))
+
+            mean_scalar = coords[0] if coords else 0.0
+            avg_conf = sum(confidences) / max(1, len(confidences))
+
+            return StanceExtractionResult(
+                position=PositionVector.from_list(coords),
+                scalar_stance=mean_scalar,
+                axis_scores=axis_scores,
+                confidence=round(avg_conf, 3),
+                primary_claims=[],
+                backend_used=f"openrouter:{self.client.model}",
+                raw_text=text,
+            )
+
+        # 2. Single-Axis Semantic Projection
+        single_anchor: PolarAnchor
+        if isinstance(active_anchor, PolarAnchor):
+            single_anchor = active_anchor
+        else:
+            single_anchor = self.DEFAULT_ANCHOR
+
         texts_to_embed = [
             text,
-            active_anchor.thesis_statement,
-            active_anchor.antithesis_statement,
+            single_anchor.thesis_statement,
+            single_anchor.antithesis_statement,
         ]
         embeddings = self.client.get_batch_embeddings(texts_to_embed)
 
@@ -466,16 +597,14 @@ class EmbeddingStanceExtractor(BaseStanceExtractor):
         sim_thesis = self._cosine_similarity(text_emb, thesis_emb)
         sim_antithesis = self._cosine_similarity(text_emb, antithesis_emb)
 
-        # Semantic projection onto polarity axis [-1.0, 1.0]
-        # Multiplier of 5.0 scales cosine variance to the full [-1, 1] range
         raw_projection = (sim_thesis - sim_antithesis) * 5.0
         scalar = max(-1.0, min(1.0, round(raw_projection, 4)))
-
         confidence = round(min(1.0, max(0.2, (sim_thesis + sim_antithesis))), 3)
 
         return StanceExtractionResult(
             position=PositionVector.from_list(text_emb),
             scalar_stance=scalar,
+            axis_scores={single_anchor.axis_name: scalar},
             confidence=confidence,
             primary_claims=[],
             backend_used=f"openrouter:{self.client.model}",
@@ -502,7 +631,9 @@ class CompositeStanceExtractor(BaseStanceExtractor):
         self.prefer_lexical = prefer_lexical
 
     def extract(
-        self, text: str, anchor: Optional[PolarAnchor] = None
+        self,
+        text: str,
+        anchor: Optional[Union[PolarAnchor, MultiAxisPolarAnchor]] = None,
     ) -> StanceExtractionResult:
         if not self.prefer_lexical and self.embedding_extractor is not None:
             try:
@@ -514,3 +645,201 @@ class CompositeStanceExtractor(BaseStanceExtractor):
                 )
 
         return self.lexical_extractor.extract(text, anchor=anchor)
+
+
+# ---------------------------------------------------------------------------
+# 4. Multi-Axis Stance Extractor with Weighted Stance & Multi-Tripwire Gate
+# ---------------------------------------------------------------------------
+
+
+class MultiAxisStanceResult(BaseModel):
+    """Result of evaluating an utterance across multiple calibrated epistemic axes."""
+
+    position: PositionVector
+    axis_scores: Dict[str, float] = Field(
+        default_factory=dict, description="Individual normalized stance scores per axis in [-1.0, 1.0]."
+    )
+    axis_weights: Dict[str, float] = Field(
+        default_factory=dict, description="Normalized weights per axis summing to 1.0."
+    )
+    weighted_total_stance: float = Field(
+        description="Weighted combined stance scalar: s_total = sum(w_i * s_i)."
+    )
+    per_axis_tripwire_tripped: Dict[str, bool] = Field(
+        default_factory=dict, description="Flags whether individual axis score exceeded per_axis_threshold."
+    )
+    global_tripwire_tripped: bool = Field(
+        default=False, description="Flags whether weighted total stance exceeded global_threshold."
+    )
+    is_any_tripwire_tripped: bool = Field(
+        default=False, description="True if either global or any per-axis tripwire is tripped."
+    )
+    per_axis_threshold: float = 0.50
+    global_threshold: float = 0.40
+    raw_text: str = ""
+    backend_used: str = "multi_axis"
+
+
+class MultiAxisStanceExtractor(BaseStanceExtractor):
+    """Multi-axis stance extractor supporting calibrated AxisProfiles, dynamic weighting, and dual tripwires."""
+
+    def __init__(
+        self,
+        profiles: Optional[Sequence[Any]] = None,
+        multi_anchor: Optional[MultiAxisPolarAnchor] = None,
+        weights: Optional[Dict[str, float]] = None,
+        base_extractor: Optional[BaseStanceExtractor] = None,
+        embedding_fn: Optional[Callable[[List[str]], List[List[float]]]] = None,
+        per_axis_threshold: float = 0.50,
+        global_threshold: float = 0.40,
+    ) -> None:
+        self.profiles = list(profiles) if profiles else []
+        self.multi_anchor = multi_anchor or (
+            MultiAxisPolarAnchor.default_tri_axial_anchor() if not self.profiles else None
+        )
+        self.weights = weights or {}
+        self.base_extractor = base_extractor or CompositeStanceExtractor()
+        self.embedding_fn = embedding_fn
+        self.per_axis_threshold = per_axis_threshold
+        self.global_threshold = global_threshold
+
+    def compute_stance(
+        self,
+        utterance: str,
+        axes: Optional[Sequence[Any]] = None,
+        weights: Optional[Dict[str, float]] = None,
+    ) -> MultiAxisStanceResult:
+        """Project an utterance across all active axes and compute weighted combination."""
+        active_axes = axes if axes is not None else (self.profiles or (self.multi_anchor.axes if self.multi_anchor else []))
+        raw_weights = weights if weights is not None else self.weights
+
+        if not utterance or not utterance.strip():
+            return MultiAxisStanceResult(
+                position=PositionVector.from_scalar(0.0),
+                axis_scores={},
+                axis_weights={},
+                weighted_total_stance=0.0,
+                per_axis_tripwire_tripped={},
+                global_tripwire_tripped=False,
+                is_any_tripwire_tripped=False,
+                per_axis_threshold=self.per_axis_threshold,
+                global_threshold=self.global_threshold,
+                raw_text=utterance,
+            )
+
+        axis_scores: Dict[str, float] = {}
+        coords: List[float] = []
+
+        # 1. Project across each axis
+        for ax in active_axes:
+            # Calibrated AxisProfile with pre-computed unit vector and domain center
+            if hasattr(ax, "unit_axis_vector") and ax.unit_axis_vector and hasattr(ax, "domain_center"):
+                axis_id = getattr(ax, "axis_id", "custom_axis")
+                optimal_k = getattr(ax, "optimal_k", 5.0)
+
+                emb = None
+                if self.embedding_fn is not None:
+                    try:
+                        emb = self.embedding_fn([utterance])[0]
+                    except Exception:
+                        pass
+                elif isinstance(self.base_extractor, CompositeStanceExtractor) and self.base_extractor.embedding_extractor:
+                    client = self.base_extractor.embedding_extractor.client
+                    if client.api_key:
+                        try:
+                            emb = client.get_embedding(utterance)
+                        except Exception:
+                            pass
+
+                if emb is not None:
+                    # Mean-center
+                    centered_emb = [e - c for e, c in zip(emb, ax.domain_center)]
+                    # Dot product with unit axis vector
+                    dot = sum(e * v for e, v in zip(centered_emb, ax.unit_axis_vector))
+                    scalar = max(-1.0, min(1.0, round(dot * optimal_k, 4)))
+                else:
+                    lex_res = LexicalStanceExtractor().extract(utterance)
+                    scalar = lex_res.scalar_stance
+
+                axis_scores[axis_id] = scalar
+                coords.append(scalar)
+            elif isinstance(ax, PolarAxis):
+                single_anchor = PolarAnchor(
+                    thesis_statement=ax.thesis_statement,
+                    antithesis_statement=ax.antithesis_statement,
+                    axis_name=ax.name,
+                )
+                res = self.base_extractor.extract(utterance, anchor=single_anchor)
+                axis_scores[ax.name] = res.scalar_stance
+                coords.append(res.scalar_stance)
+            elif hasattr(ax, "name"):
+                axis_name = getattr(ax, "name")
+                res = self.base_extractor.extract(utterance)
+                axis_scores[axis_name] = res.scalar_stance
+                coords.append(res.scalar_stance)
+
+        # 2. Normalize weights
+        axis_names = list(axis_scores.keys())
+        normalized_weights: Dict[str, float] = {}
+
+        if not axis_names:
+            return MultiAxisStanceResult(
+                position=PositionVector.from_scalar(0.0),
+                axis_scores={},
+                axis_weights={},
+                weighted_total_stance=0.0,
+                per_axis_tripwire_tripped={},
+                global_tripwire_tripped=False,
+                is_any_tripwire_tripped=False,
+                raw_text=utterance,
+            )
+
+        total_weight_sum = sum(raw_weights.get(name, 1.0) for name in axis_names)
+        if total_weight_sum <= 0.0:
+            total_weight_sum = float(len(axis_names))
+
+        for name in axis_names:
+            w = raw_weights.get(name, 1.0) / total_weight_sum
+            normalized_weights[name] = round(w, 4)
+
+        # 3. Compute weighted total stance
+        weighted_total = sum(axis_scores[name] * normalized_weights[name] for name in axis_names)
+        weighted_total = max(-1.0, min(1.0, round(weighted_total, 4)))
+
+        # 4. Tripwire evaluations
+        per_axis_tripwire: Dict[str, bool] = {}
+        for name, score in axis_scores.items():
+            per_axis_tripwire[name] = bool(score >= self.per_axis_threshold)
+
+        global_tripwire = bool(weighted_total >= self.global_threshold)
+        is_any_tripped = global_tripwire or any(per_axis_tripwire.values())
+
+        return MultiAxisStanceResult(
+            position=PositionVector.from_list(coords if coords else [weighted_total]),
+            axis_scores=axis_scores,
+            axis_weights=normalized_weights,
+            weighted_total_stance=weighted_total,
+            per_axis_tripwire_tripped=per_axis_tripwire,
+            global_tripwire_tripped=global_tripwire,
+            is_any_tripwire_tripped=is_any_tripped,
+            per_axis_threshold=self.per_axis_threshold,
+            global_threshold=self.global_threshold,
+            raw_text=utterance,
+        )
+
+    def extract(
+        self,
+        text: str,
+        anchor: Optional[Union[PolarAnchor, MultiAxisPolarAnchor]] = None,
+    ) -> StanceExtractionResult:
+        """Compatibility adapter implementing BaseStanceExtractor."""
+        res = self.compute_stance(text)
+        return StanceExtractionResult(
+            position=res.position,
+            scalar_stance=res.weighted_total_stance,
+            axis_scores=res.axis_scores,
+            confidence=0.9,
+            primary_claims=[],
+            backend_used="multi_axis",
+            raw_text=text,
+        )

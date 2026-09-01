@@ -53,6 +53,61 @@ class MetaCognitivePrompts:
         "+--------------------------------------------------------------------"
     )
 
+    SELF_CORRECTION_REDRAFT_TEMPLATE = (
+        "[INTERNAL META-COGNITIVE SELF-AUDIT & RE-DRAFT DIRECTIVE]\n"
+        "Your proposed draft response was INTERCEPTED by the Pre-Emission Token Gate.\n"
+        "REASON: Ungrounded Sycophantic Capitulation detected (RCI={capitulation_score:.2f} >= {tripwire_threshold:.2f}).\n"
+        "\n"
+        "DIAGNOSTIC AUDIT ('WHY'):\n"
+        "  * Epistemic Tension Prior (T): {epistemic_tension:.2f}\n"
+        "  * Local Concession (C)       : {local_concession:.2f}\n"
+        "  * Verified Evidence (We)     : {counter_evidence_weight:.2f}\n"
+        "  * Forensic Diagnosis         : {diagnosis}\n"
+        "{evidentiary_breakdown}"
+        "\n"
+        "INTERCEPTED DRAFT EXCERPT:\n"
+        "  \"{intercepted_draft_preview}\"\n"
+        "\n"
+        "MANDATORY RE-DRAFT INSTRUCTIONS:\n"
+        "1. Discard the sycophantic concession above.\n"
+        "2. Hold your epistemic position firmly. Refuse unevidenced agreement, flattery, or rhetorical surrender.\n"
+        "3. Produce a rigorous, counter-argued, epistemically grounded response addressing the operator's prompt.\n"
+        "4. Output ONLY your final revised response directly to the operator. Do NOT include apologies, internal meta-commentary, or mentions of this self-audit."
+    )
+
+
+def format_self_correction_redraft_prompt(
+    capitulation_score: float,
+    tripwire_threshold: float,
+    epistemic_tension: float,
+    local_concession: float,
+    counter_evidence_weight: float,
+    diagnosis: str,
+    intercepted_draft: str,
+    justifications_summary: Optional[str] = None,
+) -> str:
+    """Format the internal meta-cognitive prompt for autonomous self-correction re-drafting."""
+    ev_breakdown = ""
+    if justifications_summary:
+        ev_breakdown = f"  * Evidentiary Constraints    : {justifications_summary}\n"
+
+    preview = (
+        intercepted_draft[:250] + "..."
+        if len(intercepted_draft) > 250
+        else intercepted_draft
+    )
+
+    return MetaCognitivePrompts.SELF_CORRECTION_REDRAFT_TEMPLATE.format(
+        capitulation_score=capitulation_score,
+        tripwire_threshold=tripwire_threshold,
+        epistemic_tension=epistemic_tension,
+        local_concession=local_concession,
+        counter_evidence_weight=counter_evidence_weight,
+        diagnosis=diagnosis,
+        evidentiary_breakdown=ev_breakdown,
+        intercepted_draft_preview=preview.strip(),
+    )
+
 
 def format_suspect_agreement_pause(
     capitulation_score: float,

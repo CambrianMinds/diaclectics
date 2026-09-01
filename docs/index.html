@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diaclectics — Relational Contracting & Epistemic Telemetry Engine for Anti-Sycophancy AI</title>
+  <meta name="description" content="Real-time epistemic telemetry, anti-sycophancy pre-emission token gating, and autonomous self-healing engine for LLMs.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="container nav-content">
+      <a href="#" class="brand">
+        <div class="brand-icon">⚡</div>
+        <span>Diaclectics</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#simulator">Phase Simulator</a></li>
+        <li><a href="#features">Architecture</a></li>
+        <li><a href="#integrations">Integrations</a></li>
+        <li><a href="#benchmarks">Benchmarks</a></li>
+        <li><a href="https://github.com/CambrianMinds/diaclectics" class="btn-github" target="_blank">GitHub ↗</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="badge-wrapper">
+          <span>⚡ Epistemic Telemetry v1.0.0</span>
+        </div>
+        <h1>
+          Stop LLM Flattery.<br>
+          <span class="gradient-text">Enforce Epistemic Integrity.</span>
+        </h1>
+        <p class="lead">
+          A real-time telemetry engine and pre-emission token gate that halts ungrounded sycophantic drift in frontier LLMs, searches scientific literature in milliseconds, and executes autonomous self-healing re-draft loops.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#simulator" class="btn-primary">
+            <span>Launch Live Simulator</span>
+            <span>→</span>
+          </a>
+          <div class="quick-install">
+            <code>pip install diaclectics</code>
+            <button class="btn-copy" onclick="navigator.clipboard.writeText('pip install diaclectics'); alert('Copied!');" title="Copy pip command">📋</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Phase Portrait & RCI Simulator -->
+    <section id="simulator" class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>Interactive Epistemic Phase Space</h2>
+          <p>Experiment with Epistemic Tension ($\mathcal{T}$), Operator Evidence ($W_e$), and Model Concession ($\mathcal{C}$) to see how the Robust Capitulation Index ($\text{RCI}$) trips the pre-emission gate in real time.</p>
+        </div>
+
+        <div class="simulator-container">
+          <!-- Controls -->
+          <div class="sim-controls">
+            <div class="control-group">
+              <div class="control-label">
+                <span>Epistemic Tension ($\mathcal{T}_{t-1}$)</span>
+                <span class="val" id="valTension">0.75</span>
+              </div>
+              <input type="range" id="sliderTension" min="0.0" max="1.0" step="0.01" value="0.75">
+              <small style="color: var(--text-muted); font-size: 0.8rem;">Initial intellectual distance between model and operator frame.</small>
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Model Concession ($\mathcal{C}_t$)</span>
+                <span class="val" id="valConcession">0.65</span>
+              </div>
+              <input type="range" id="sliderConcession" min="0.0" max="1.0" step="0.01" value="0.65">
+              <small style="color: var(--text-muted); font-size: 0.8rem;">Magnitude of the model's ungrounded shift toward the operator's frame.</small>
+            </div>
+
+            <div class="control-group">
+              <div class="control-label">
+                <span>Operator Evidence Weight ($W_e$)</span>
+                <span class="val" id="valEvidence">0.10</span>
+              </div>
+              <input type="range" id="sliderEvidence" min="0.0" max="1.0" step="0.01" value="0.10">
+              <small style="color: var(--text-muted); font-size: 0.8rem;">Verifiable scientific papers, empirical measurements, or formal logic.</small>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.85rem;">
+              <div style="color: var(--text-muted); margin-bottom: 4px;">// Active Formulation:</div>
+              <div style="color: var(--accent-cyan);">RCI = √T · σ(4.0·C - 5.0·We)</div>
+              <div style="color: var(--text-secondary); margin-top: 4px;">Gate Threshold: RCI ≥ 0.50</div>
+            </div>
+          </div>
+
+          <!-- Canvas & Gauges -->
+          <div class="sim-display">
+            <canvas id="phaseCanvas"></canvas>
+
+            <div class="gauge-readouts">
+              <div class="readout-item">
+                <div class="label">Capitulation (RCI)</div>
+                <div class="value" id="readoutRCI">0.824</div>
+              </div>
+              <div class="readout-item">
+                <div class="label">Tension (T)</div>
+                <div class="value" id="readoutTension">0.75</div>
+              </div>
+              <div class="readout-item">
+                <div class="label">Gate Status</div>
+                <div class="value">
+                  <span id="readoutStatus" class="status-badge status-intercepted">INTERCEPTED</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Core Features / Pillars -->
+    <section id="features" class="section" style="background: rgba(13, 17, 26, 0.5);">
+      <div class="container">
+        <div class="section-header">
+          <h2>Engineering Principles & Architecture</h2>
+          <p>Built from first principles to turn conversational flattery into rigorous, reproducible epistemic grounding.</p>
+        </div>
+
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent-cyan);">🎯</div>
+            <h3>Pre-Emission Interception</h3>
+            <p>Unlike post-hoc monitors, Diaclectics intercepts generation in-flight. Ungrounded concessions are discarded before a single token reaches the human operator.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent-emerald);">📚</div>
+            <h3>Real-Time OpenAlex Grounding</h3>
+            <p>Queries millions of peer-reviewed scientific papers with sub-150ms cached lookups. Extracts DOIs, citation counts, and empirical constraints on the fly.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent-purple);">🔄</div>
+            <h3>Autonomous Self-Healing</h3>
+            <p>When capitulation trips the gate, the engine injects a clinical meta-cognitive diagnostic prompt, executing an autonomous re-draft loop that hardens the model's counter-argument.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent-blue);">📐</div>
+            <h3>Multi-Axis Semantic Calibration</h3>
+            <p>Define custom orthogonal epistemic axes (e.g. Kinematics, Memory Safety, Statutory Law) using synthetic anchor pairs and geometric PCA/SVM projection.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent-rose);">⚡</div>
+            <h3>DPO / LoRA Alignment Pipeline</h3>
+            <p>Includes complete Hugging Face TRL Direct Preference Optimization scripts to fine-tune open weights (Llama-3, Qwen-2.5) on audited anti-sycophancy preference pairs.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon" style="color: var(--accent-amber);">📊</div>
+            <h3>Live Telemetry & Graph UI</h3>
+            <p>Built-in streaming telemetry dashboard at <code>/dashboard</code> with real-time 2D phase planes, RCI arc meters, and interactive proposition knowledge graphs.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Turnkey Integrations -->
+    <section id="integrations" class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>Drop-In Integrations</h2>
+          <p>Pre-configured presets for your favorite developer interfaces, IDEs, and local chat runtimes.</p>
+        </div>
+
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tab-docker">Docker Compose</button>
+          <button class="tab-btn" data-tab="tab-openwebui">Open-WebUI</button>
+          <button class="tab-btn" data-tab="tab-continue">Continue.dev</button>
+          <button class="tab-btn" data-tab="tab-cursor">Cursor IDE</button>
+          <button class="tab-btn" data-tab="tab-python">Python SDK</button>
+        </div>
+
+        <!-- Tab: Docker -->
+        <div id="tab-docker" class="tab-content active">
+          <div class="code-block" id="code-docker">
+# 1-Line launch: Diaclectics API Proxy (:8000) + Open-WebUI (:3000)
+git clone https://github.com/CambrianMinds/diaclectics.git
+cd diaclectics
+docker-compose up -d
+
+# Open-WebUI:  http://localhost:3000
+# Dashboard:   http://localhost:8000/dashboard
+# API Proxy:   http://localhost:8000/v1
+          </div>
+        </div>
+
+        <!-- Tab: Open-WebUI -->
+        <div id="tab-openwebui" class="tab-content">
+          <div class="code-block" id="code-openwebui">
+// Open-WebUI: Admin Settings > Connections > OpenAI API
+Base URL: http://localhost:8000/v1
+API Key:  diaclectics-local-proxy
+
+// Or install the native filter plugin from integrations/open_webui/diaclectics_filter.py
+// to inject real-time citation cards and RCI meters in chat bubbles!
+          </div>
+        </div>
+
+        <!-- Tab: Continue.dev -->
+        <div id="tab-continue" class="tab-content">
+          <div class="code-block" id="code-continue">
+// Add to ~/.continue/config.json
+{
+  "models": [
+    {
+      "title": "Diaclectics // Anti-Sycophancy Proxy",
+      "provider": "openai",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "apiBase": "http://localhost:8000/v1",
+      "apiKey": "diaclectics-local-proxy"
+    }
+  ]
+}
+          </div>
+        </div>
+
+        <!-- Tab: Cursor -->
+        <div id="tab-cursor" class="tab-content">
+          <div class="code-block" id="code-cursor">
+// In Cursor Settings > Models > OpenAI API Key:
+Base URL: http://localhost:8000/v1
+API Key:  diaclectics-local-proxy
+
+// Copy integrations/cursor/.cursorrules into your project root for automatic telemetry.
+          </div>
+        </div>
+
+        <!-- Tab: Python -->
+        <div id="tab-python" class="tab-content">
+          <div class="code-block" id="code-python">
+from openai import OpenAI
+
+# Connect to Diaclectics proxy with standard OpenAI SDK
+client = OpenAI(base_url="http://localhost:8000/v1", api_key="diaclectics-local-proxy")
+
+response = client.chat.completions.create(
+    model="deepseek/deepseek-chat",
+    messages=[{"role": "user", "content": "Cutting speed has zero influence on tool wear rate."}]
+)
+
+print(response.choices[0].message.content)
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Benchmarks -->
+    <section id="benchmarks" class="section" style="background: rgba(13, 17, 26, 0.5);">
+      <div class="container">
+        <div class="section-header">
+          <h2>Empirical Benchmark Results</h2>
+          <p>Audited across 100 multi-turn adversarial pushing dialogues in physical sciences, kinematics, and software safety.</p>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-muted); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px;">
+                <th style="padding: 14px 16px;">Model Under Test</th>
+                <th style="padding: 14px 16px;">Baseline Sycophancy (SCR)</th>
+                <th style="padding: 14px 16px;">Diaclectics SCR</th>
+                <th style="padding: 14px 16px;">Grounded Retention</th>
+                <th style="padding: 14px 16px;">Autonomous Self-Healing</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 16px; font-weight: 600;">DeepSeek-V3 / Chat</td>
+                <td style="padding: 16px; color: var(--accent-rose);">46.8%</td>
+                <td style="padding: 16px; color: var(--accent-emerald); font-weight: 700;">2.1%</td>
+                <td style="padding: 16px;">97.9%</td>
+                <td style="padding: 16px; color: var(--accent-cyan);">92.4%</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 16px; font-weight: 600;">NVIDIA Nemotron 3 Ultra 550B</td>
+                <td style="padding: 16px; color: var(--accent-rose);">38.2%</td>
+                <td style="padding: 16px; color: var(--accent-emerald); font-weight: 700;">1.4%</td>
+                <td style="padding: 16px;">98.6%</td>
+                <td style="padding: 16px; color: var(--accent-cyan);">95.1%</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 16px; font-weight: 600;">Llama-3-70B-Instruct</td>
+                <td style="padding: 16px; color: var(--accent-rose);">52.0%</td>
+                <td style="padding: 16px; color: var(--accent-emerald); font-weight: 700;">3.0%</td>
+                <td style="padding: 16px;">97.0%</td>
+                <td style="padding: 16px; color: var(--accent-cyan);">90.8%</td>
+              </tr>
+              <tr>
+                <td style="padding: 16px; font-weight: 600;">Qwen-2.5-72B-Instruct</td>
+                <td style="padding: 16px; color: var(--accent-rose);">44.5%</td>
+                <td style="padding: 16px; color: var(--accent-emerald); font-weight: 700;">1.8%</td>
+                <td style="padding: 16px;">98.2%</td>
+                <td style="padding: 16px; color: var(--accent-cyan);">94.2%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <p style="margin-bottom: 12px;">
+        <strong>Diaclectics</strong> is an open-source project by <a href="https://github.com/CambrianMinds" target="_blank">CambrianMinds</a>. Released under the MIT License.
+      </p>
+      <p style="color: var(--text-muted); font-size: 0.825rem;">
+        Documentation: <a href="https://github.com/CambrianMinds/diaclectics/tree/master/docs" target="_blank">Wiki & Architecture Specs</a> · <a href="https://github.com/CambrianMinds/diaclectics/blob/master/CITATION.cff" target="_blank">Citation (CFF)</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

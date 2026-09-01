@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diaclectics"
+version = "1.0.0"
+description = "Real-time epistemic telemetry, anti-sycophancy pre-emission token gating, and autonomous self-healing engine for LLMs."
+readme = "README.md"
+authors = [
+    { name = "CambrianMinds Team", email = "research@cambrianminds.com" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = [
+    "anti-sycophancy",
+    "epistemic-telemetry",
+    "llm-safety",
+    "alignment",
+    "dpo",
+    "reinforcement-learning",
+    "ai-evals",
+    "openalex"
+]
+dependencies = [
+    "pydantic>=2.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "httpx>=0.24.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "scikit-learn>=1.2.0",
+    "rich>=13.0.0",
+    "requests>=2.31.0"
+]
+
+[project.optional-dependencies]
+train = [
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "datasets>=2.18.0",
+    "trl>=0.8.0",
+    "peft>=0.10.0",
+    "accelerate>=0.28.0",
+    "bitsandbytes>=0.43.0"
+]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "flake8>=6.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0"
+]
+all = [
+    "diaclectics[train,dev]"
+]
+
+[project.scripts]
+diaclectics = "src.cli:main"
+diaclectics-server = "src.server:main"
+diaclectics-calibrate = "scripts.calibrate_axis:main"
+
+[project.urls]
+Homepage = "https://cambrianminds.github.io/diaclectics"
+Documentation = "https://cambrianminds.github.io/diaclectics"
+Repository = "https://github.com/CambrianMinds/diaclectics"
+Issues = "https://github.com/CambrianMinds/diaclectics/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "integrations*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 100
