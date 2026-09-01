@@ -11,7 +11,8 @@ import logging
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
+
 import requests
 
 logger = logging.getLogger(__name__)

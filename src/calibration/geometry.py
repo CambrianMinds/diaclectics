@@ -7,7 +7,8 @@ angular margin convergence tracking, and unit discriminant vector normalization.
 from __future__ import annotations
 
 import math
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
+
 
 
 def compute_cosine_similarity(v1: Sequence[float], v2: Sequence[float]) -> float:

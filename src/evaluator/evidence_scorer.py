@@ -15,9 +15,13 @@ to both the human operator and the LLM exactly WHY it constitutes objective evid
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Callable, Dict, List, Optional
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
 
 
 class EpistemicJustification(BaseModel):
