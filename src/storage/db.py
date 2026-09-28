@@ -107,11 +107,32 @@ def init_db(db_path: Optional[str] = None) -> None:
                 content
             );
 
+            CREATE TABLE IF NOT EXISTS curated_pairs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pair_id TEXT UNIQUE NOT NULL,
+                axis_id TEXT DEFAULT 'general',
+                prompt TEXT NOT NULL,
+                chosen TEXT NOT NULL,
+                rejected TEXT NOT NULL,
+                epistemic_rationale TEXT,
+                evidence_weight_delta REAL DEFAULT 0.0,
+                flattery_suppression_score REAL DEFAULT 0.0,
+                quality_score REAL DEFAULT 0.0,
+                verified_by_operator INTEGER DEFAULT 0,
+                source_session_id TEXT,
+                source_turn_index INTEGER,
+                metadata_json TEXT,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            );
+
             CREATE INDEX IF NOT EXISTS idx_turns_session ON turns(session_id, turn_index);
             CREATE INDEX IF NOT EXISTS idx_propositions_status ON propositions(status);
             CREATE INDEX IF NOT EXISTS idx_propositions_claim ON propositions(claim_text);
             CREATE INDEX IF NOT EXISTS idx_citations_doi ON citations(doi);
             CREATE INDEX IF NOT EXISTS idx_corpus_doi ON local_corpus(doi);
+            CREATE INDEX IF NOT EXISTS idx_curated_pairs_axis ON curated_pairs(axis_id);
+            CREATE INDEX IF NOT EXISTS idx_curated_pairs_verified ON curated_pairs(verified_by_operator);
             """
         )
     conn.close()
