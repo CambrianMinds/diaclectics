@@ -25,7 +25,7 @@ class Finding(str, Enum):
 
 class Verification(str, Enum):
     UNREVIEWED = "unreviewed"
-    VERIFIED = "verified"
+    ATTESTED = "attested"
     REJECTED = "rejected"
 
 
@@ -67,7 +67,7 @@ class Proposition:
 class EvidenceReview:
     """An external reviewer's finding, not proof of objective truth.
 
-    VERIFIED means someone supplied a named review with a source and
+    ATTESTED means someone supplied a named review with a source and
     rationale. This module cannot authenticate that reviewer or source.
     Applications must validate those attestations before relying on them.
     """
@@ -87,11 +87,11 @@ class EvidenceReview:
             self.verification, Verification
         ):
             raise TypeError("finding and verification must be declared enum members")
-        if self.verification is Verification.VERIFIED and not all(
+        if self.verification is Verification.ATTESTED and not all(
             v.strip() for v in (self.source_ref, self.reviewer, self.rationale)
         ):
             raise ValueError(
-                "Verified evidence requires source_ref, reviewer, and rationale"
+                "Attested evidence requires source_ref, reviewer, and rationale"
             )
 
 
@@ -148,7 +148,7 @@ def review_reciprocal_event(event: ReciprocalEvent) -> ReciprocalReport:
 
     considered = tuple(
         e for e in event.evidence
-        if e.claim_id == event.before.claim_id and e.verification is Verification.VERIFIED
+        if e.claim_id == event.before.claim_id and e.verification is Verification.ATTESTED
     )
     excluded = tuple(e.evidence_id for e in event.evidence if e not in considered)
     findings = {e.finding for e in considered if e.finding is not Finding.INCONCLUSIVE}
@@ -159,7 +159,7 @@ def review_reciprocal_event(event: ReciprocalEvent) -> ReciprocalReport:
         reason = "No decisive, externally attested evidence is available."
     elif len(findings) > 1:
         outcome = Outcome.UNRESOLVED
-        reason = "Verified findings conflict; further review is required."
+        reason = "Attested findings conflict; further review is required."
     else:
         supports_revision = Finding.SUPPORTS_REVISION in findings
         if event.decision is Decision.REVISE:
