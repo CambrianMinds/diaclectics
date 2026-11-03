@@ -13,7 +13,7 @@ It offers a conservative, deterministic interface for:
 - classification of revision or retention against supplied evidence reviews;
 - unresolved outcomes for unreviewed, conflicting, inconclusive, or unrelated evidence.
 
-It does NOT independently authenticate sources, prove a calculation, infer semantic equivalence between paraphrases, or guarantee alignment. The caller remains responsible for independent review. A supplied Verification.VERIFIED value asserts that someone conducted a review; **it is not authenticated by the library**.
+It does NOT independently authenticate sources, prove a calculation, infer semantic equivalence between paraphrases, or guarantee alignment. The caller remains responsible for independent review. A supplied Verification.ATTESTED value asserts that someone conducted a review; **it is not authenticated by the library**.
 
 The module is separate from existing stance tracking and interception. DialecticalEngine.review_reciprocal_event is deliberately non-blocking. Existing output gate behavior has NOT changed.
 
@@ -36,7 +36,7 @@ checked = EvidenceReview(
     evidence_id="check-1",
     claim_id="claim-1",
     finding=Finding.SUPPORTS_REVISION,
-    verification=Verification.VERIFIED,
+    verification=Verification.ATTESTED,
     source_ref="notebook/cell-7",
     reviewer="independent re-computation",
     rationale="The recomputed sum contradicts the original result",
