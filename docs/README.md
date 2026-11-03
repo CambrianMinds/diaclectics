@@ -12,10 +12,11 @@ This folder contains an implementation record and a working research method for 
 
 - [Reciprocal Principle Engine API](RECIPROCAL-ENGINE-API.md): opt-in proposition and evidence review, including limitations and tests.
 - [Reciprocal Method](RECIPROCAL-METHOD.md): the practical interpretation for real collaboration.
+- [Objection Materiality](OBJECTION-MATERIALITY.md): check argumentative role and consequential relevance before raising criticism; includes counterfactual examples.
 - [Observational Evaluation](OBSERVATIONAL-EVALUATION.md): how to study naturally occurring interactions without forcing the result.
 - [Engineering Handoff, 2026-11-02](ENGINEERING-HANDOFF-2026-11-02.md): source-grounded technical findings, uncertainties, and priorities.
 
-These three notes are *working documents*, not amendments to the foundation. Revisit them against code and evidence rather than treating them as unchallengeable instructions.
+These notes are *working documents*, not amendments to the foundation. Revisit them against code and evidence rather than treating them as unchallengeable instructions.
 
 ## Where to look in the existing project
 

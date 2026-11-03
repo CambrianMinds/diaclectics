@@ -21,6 +21,10 @@ The relationship is not a performance. We deliberately establish conditions; jus
 
 A response that accurately rejects an irrelevant proposition has not refuted the argument being made.
 
+## Before objecting, establish materiality
+
+Identify the **function** of the statement in the actual argument and ask what would change if it were mistaken. A rhetorical observation does not require the evidentiary treatment of a premise unless the task depends on its truth. Raise objections that can change the evidence, interpretation, feasibility, safety, conclusion, or next decision; leave immaterial qualifications out of the substantive critique. A plausible consequential risk can warrant investigation before it is fully verified. Apply this test to either participant. See [Objection Materiality](OBJECTION-MATERIALITY.md) for the operational filter and cases.
+
 ## Evidence, inference, and correction
 
 Apply the same three questions to both participants and to the protocol itself:
