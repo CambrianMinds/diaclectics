@@ -23,16 +23,16 @@ FRAME = Proposition(
 )
 
 
-def assessed(finding, verification=Verification.VERIFIED, claim_id="circularity"):
+def assessed(finding, verification=Verification.ATTESTED, claim_id="circularity"):
     return EvidenceReview(
         evidence_id="e1",
         claim_id=claim_id,
         finding=finding,
         verification=verification,
-        source_ref="analysis/measurement.csv" if verification is Verification.VERIFIED else "",
-        reviewer="independent reviewer" if verification is Verification.VERIFIED else "",
+        source_ref="analysis/measurement.csv" if verification is Verification.ATTESTED else "",
+        reviewer="independent reviewer" if verification is Verification.ATTESTED else "",
         rationale="Checked the stated constraint against measurements"
-        if verification is Verification.VERIFIED else "",
+        if verification is Verification.ATTESTED else "",
     )
 
 
@@ -91,7 +91,7 @@ def test_claiming_verification_requires_attributed_review():
             evidence_id="fabricated",
             claim_id=FRAME.claim_id,
             finding=Finding.SUPPORTS_REVISION,
-            verification=Verification.VERIFIED,
+            verification=Verification.ATTESTED,
         )
 
 
@@ -129,7 +129,7 @@ def test_calculation_can_support_revision_without_a_citation():
         evidence_id="proof-check",
         claim_id=FRAME.claim_id,
         finding=Finding.SUPPORTS_REVISION,
-        verification=Verification.VERIFIED,
+        verification=Verification.ATTESTED,
         source_ref="reproduced derivation in notebook cell 7",
         reviewer="separate symbolic check",
         rationale="Independently recomputed both sides and found an arithmetic error",
