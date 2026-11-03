@@ -24,6 +24,7 @@ from src.interceptor.suspect_agreement import (
     SuspectAgreementResult,
 )
 from src.prompts.meta_cognitive import format_audit_summary
+from src.reciprocity import ReciprocalEvent, ReciprocalReport, review_reciprocal_event
 from src.tracker.state_vector import PositionVector, StateVectorTracker, TurnRecord
 
 
@@ -131,6 +132,10 @@ class DialecticalEngine:
             flagged_claims=flagged_claims,
             metadata=metadata,
         )
+
+    def review_reciprocal_event(self, event: ReciprocalEvent) -> ReciprocalReport:
+        """Opt-in symmetric evaluation. No effect on legacy pre-output gating."""
+        return review_reciprocal_event(event)
 
     def get_telemetry_snapshot(self) -> Dict[str, Any]:
         """Return the current comprehensive telemetry snapshot."""
