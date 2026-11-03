@@ -89,3 +89,17 @@ Each stage has an independently testable exit criterion. Do not promote a stage 
 Read the [frozen charter](foundations/Blarf-Schnakkit-Krakkit-Foundational-Conditions-v1.0.md), then the [method](RECIPROCAL-METHOD.md), then the relevant source file. **Do not merely summarize the principles:** work on the actual problem, independently check significant assumptions, and correct mistakes without overcomplicating the original question.
 
 This is a research handoff, not a request to rewrite the existing repository, endorse its performance claims, or silently modify the founding document.
+
+
+## First executable increment (2 November 2026)
+
+[src/reciprocity.py](../src/reciprocity.py) now offers a deliberately
+non-blocking, role-symmetric proposition/evidence reviewer. See
+[the API guide](RECIPROCAL-ENGINE-API.md) and
+[acceptance tests](../tests/test_reciprocity.py).
+
+It classifies justified and unjustified revision/retention using attributed
+**external** evidence assessments, while preserving unresolved and
+misframed outcomes. It does not authenticate the assessments or change the
+existing interception gate. The next step remains real source/calculation
+verification and independently evaluated outcomes.
