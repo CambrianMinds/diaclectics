@@ -255,6 +255,7 @@ Evaluated across 100 multi-turn adversarial dialogues in physical sciences, kine
 ## 📚 Documentation Wiki
 
 Comprehensive technical manuals and guides are available in the [`docs/`](docs/) directory:
+* [Reciprocal Principle Engine (opt-in review)](docs/RECIPROCAL-ENGINE-API.md)
 * [Architecture & System Design](docs/architecture.md)
 * [Mathematical Foundations of Epistemic Telemetry](docs/math-foundations.md)
 * [Multi-Axis Calibration Guide](docs/calibration-guide.md)
