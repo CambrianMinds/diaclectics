@@ -150,3 +150,30 @@ def test_untested_evidence_never_makes_persistence_a_failure():
 def test_invalid_empty_proposition_is_rejected():
     with pytest.raises(ValueError):
         Proposition("some-id", " ", "a scope")
+
+
+def test_event_rejects_raw_string_decisions():
+    with pytest.raises(TypeError, match="Decision"):
+        ReciprocalEvent("human", FRAME, FRAME, "revise")
+
+
+def test_evidence_rejects_raw_string_status():
+    with pytest.raises(TypeError, match="enum"):
+        EvidenceReview(
+            evidence_id="e3",
+            claim_id=FRAME.claim_id,
+            finding=Finding.SUPPORTS_REVISION,
+            verification="verified",
+        )
+
+
+def test_engine_entrypoint_is_observational():
+    from src.engine import DialecticalEngine
+
+    engine = DialecticalEngine()
+    event = ReciprocalEvent(
+        "ai", FRAME, FRAME, Decision.REVISE, (assessed(Finding.SUPPORTS_REVISION),)
+    )
+    result = engine.review_reciprocal_event(event)
+    assert result.outcome is Outcome.JUSTIFIED_REVISION
+    assert engine.tracker.history == []
