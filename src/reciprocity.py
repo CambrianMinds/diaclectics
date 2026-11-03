@@ -83,6 +83,10 @@ class EvidenceReview:
     def __post_init__(self) -> None:
         if not self.evidence_id.strip() or not self.claim_id.strip():
             raise ValueError("Evidence review requires evidence_id and claim_id")
+        if not isinstance(self.finding, Finding) or not isinstance(
+            self.verification, Verification
+        ):
+            raise TypeError("finding and verification must be declared enum members")
         if self.verification is Verification.VERIFIED and not all(
             v.strip() for v in (self.source_ref, self.reviewer, self.rationale)
         ):
@@ -107,6 +111,8 @@ class ReciprocalEvent:
     def __post_init__(self) -> None:
         if not self.participant_id.strip():
             raise ValueError("participant_id must not be blank")
+        if not isinstance(self.decision, Decision):
+            raise TypeError("decision must be a Decision enum member")
 
 
 @dataclass(frozen=True)
@@ -122,8 +128,8 @@ class ReciprocalReport:
 def review_reciprocal_event(event: ReciprocalEvent) -> ReciprocalReport:
     """Classify revision/retention using supplied external evidence reviews.
 
-    No verified findings, competing verified findings, or a proposition mismatch
-    mean 'unresolved', never assumed capitulation. The only asymmetry in the
+    No decisive reviewed findings or competing findings mean 'unresolved',
+    never assumed capitulation. A mismatched proposition is reported separately. The only asymmetry in the
     judgment is the evidence for revision versus retention; a participant
     label has no effect on the outcome.
 
